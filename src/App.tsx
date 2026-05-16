@@ -21,7 +21,7 @@ import {
   skillPracticeSummaryForGame,
   totalSkillProgress,
 } from "./gameLogic";
-import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, UserProfile } from "./gameLogic";
+import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, SupportNeed, UserProfile } from "./gameLogic";
 
 type View =
   | "onboarding"
@@ -341,13 +341,51 @@ function ChildHubNav({ active, onGo, onParent }: { active: HubTabView; onGo: (vi
 }
 
 function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
+  type Step = "profile" | "comfort";
+  const [step, setStep] = useState<Step>("profile");
   const [name, setName] = useState("Amina");
   const [age, setAge] = useState<Age>(8);
   const [language, setLanguage] = useState<Language>("kz");
+  const [supportNeeds, setSupportNeeds] = useState<SupportNeed[]>(["standard"]);
+  const [showMockInfo, setShowMockInfo] = useState(false);
 
-  const submit = (event: FormEvent) => {
+  const normalizedNeeds = useMemo(() => {
+    const needs = supportNeeds.length ? supportNeeds : (["standard"] as SupportNeed[]);
+    const uniq = Array.from(new Set(needs));
+    return uniq.length ? uniq : (["standard"] as SupportNeed[]);
+  }, [supportNeeds]);
+
+  const toggleNeed = (need: SupportNeed) => {
+    setSupportNeeds((prev) => {
+      const set = new Set(prev);
+      if (need === "standard") return ["standard"];
+      if (set.has(need)) set.delete(need);
+      else set.add(need);
+      set.delete("standard");
+      const next = Array.from(set) as SupportNeed[];
+      return next.length ? next : ["standard"];
+    });
+  };
+
+  const startWithNeeds = (needs: SupportNeed[], setupSource: "manual" | "default" | "mock_document") => {
+    const base = makeProfile(name.trim() || "Bota Friend", age, language);
+    const cleanNeeds = needs.length ? needs : (["standard"] as SupportNeed[]);
+    const enabled = cleanNeeds.some((n) => n !== "standard");
+    onStart({
+      ...base,
+      adaptiveProfile: {
+        ...base.adaptiveProfile,
+        supportNeeds: cleanNeeds,
+        setupSource,
+        settings: { ...base.adaptiveProfile.settings, enabled },
+        recommendationSummary: [],
+      },
+    });
+  };
+
+  const nextFromProfile = (event: FormEvent) => {
     event.preventDefault();
-    onStart(makeProfile(name.trim() || "Bota Friend", age, language));
+    setStep("comfort");
   };
 
   return (
@@ -356,20 +394,107 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
       <h1>Bota Quest</h1>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
-        <p>Hi there! I'm <strong>Bota the Camel</strong>! Let's explore Kazakhstan together, play fun learning games, and earn shiny coins!</p>
+        <p>
+          Hi there! I'm <strong>Bota the Camel</strong>! Let's explore Kazakhstan together, play fun learning games, and earn shiny coins!
+        </p>
       </div>
-      <form className="panel" onSubmit={submit}>
-        <label>What's your name?<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Type your name..." /></label>
-        <label>How old are you?<select value={age} onChange={(event) => setAge(Number(event.target.value) as Age)}>{[7, 8, 9, 10, 11].map((item) => <option key={item}>{item}</option>)}</select></label>
-        <fieldset>
-          <legend>Pick your language</legend>
-          <div className="segmented">
-            <button type="button" className={language === "kz" ? "active" : ""} onClick={() => setLanguage("kz")}>Қазақша</button>
-            <button type="button" className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>Русский</button>
+      {step === "profile" ? (
+        <form className="panel" onSubmit={nextFromProfile}>
+          <label>
+            What's your name?
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Type your name..." />
+          </label>
+          <label>
+            How old are you?
+            <select value={age} onChange={(event) => setAge(Number(event.target.value) as Age)}>
+              {[7, 8, 9, 10, 11].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <fieldset>
+            <legend>Pick your language</legend>
+            <div className="segmented">
+              <button type="button" className={language === "kz" ? "active" : ""} onClick={() => setLanguage("kz")}>
+                Қазақша
+              </button>
+              <button type="button" className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>
+                Русский
+              </button>
+            </div>
+          </fieldset>
+          <div className="cta-row">
+            <button className="primary" type="submit">
+              Next: Comfort setup
+            </button>
+            <button type="button" onClick={() => startWithNeeds(["standard"], "default")}>
+              Skip for now
+            </button>
           </div>
-        </fieldset>
-        <button className="primary" type="submit">Let's Go! 🚀</button>
-      </form>
+        </form>
+      ) : (
+        <>
+          <p className="eyebrow">Learning Comfort Setup</p>
+          <h2>Make Botara comfortable for your child</h2>
+          <p className="lead">Choose how the app should adapt. You can change this later in Parent Mode.</p>
+
+          <div className="support-grid" role="group" aria-label="Support needs">
+            {(
+              [
+                ["vision", "Better visibility", "Larger text, high contrast, voice instructions, and fewer small details."],
+                ["hearing", "Text instead of sound", "Subtitles, visual feedback, and no audio-only tasks."],
+                ["motor", "Easier touch controls", "Bigger buttons, no drag-only actions, and optional gesture answers."],
+                ["focus", "Calm focus mode", "No timer, fewer animations, simpler instructions, and one task at a time."],
+                ["standard", "Standard mode", "Use the regular Bota Quest experience."],
+              ] as const
+            ).map(([key, title, description]) => {
+              const selected = normalizedNeeds.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`support-card ${selected ? "is-selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => toggleNeed(key)}
+                >
+                  <div className="support-card-top">
+                    <strong>{title}</strong>
+                    <span className="support-card-state">{selected ? "Selected" : "Tap to select"}</span>
+                  </div>
+                  <p>{description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="cta-row">
+            <button className="primary" type="button" onClick={() => startWithNeeds(normalizedNeeds, "manual")}>
+              Create adaptive profile
+            </button>
+            <button type="button" onClick={() => startWithNeeds(["standard"], "default")}>
+              Skip for now
+            </button>
+          </div>
+
+          <button type="button" onClick={() => setShowMockInfo((v) => !v)} aria-expanded={showMockInfo}>
+            Add specialist recommendation (mock)
+          </button>
+
+          {showMockInfo && (
+            <div className="panel">
+              <strong>Optional (demo)</strong>
+              <p className="lead">
+                Optional: You can add a specialist recommendation to help configure the app. In this MVP, the file is not stored or processed. You can
+                also set everything manually.
+              </p>
+            </div>
+          )}
+
+          <button type="button" onClick={() => setStep("profile")}>
+            ← Back
+          </button>
+        </>
+      )}
     </section>
   );
 }
