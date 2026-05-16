@@ -34,6 +34,7 @@ type Location = {
   city: string;
   gameId?: View;
   skill: string;
+  icon: string;
   locked?: boolean;
 };
 
@@ -50,10 +51,10 @@ type Reward = {
 const STORAGE_KEY = "botaQuest:v1";
 
 const locations: Location[] = [
-  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory" },
-  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language" },
-  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math" },
-  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", locked: true },
+  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️" },
+  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌" },
+  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️" },
+  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", locked: true },
 ];
 
 const rewards: Reward[] = [
@@ -180,7 +181,10 @@ function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile;
   return (
     <header className="topbar">
       <button className="icon-button" onClick={onMap} aria-label="Map">🗺️</button>
-      <strong>{profile.coins} Bota Coins</strong>
+      <div className="brand-lockup">
+        <strong>Bota Quest</strong>
+        <span>{profile.coins} Bota Coins</span>
+      </div>
       <div className="top-actions">
         <button className="icon-button" onClick={onRewards} aria-label="Rewards">🎁</button>
         <button className="icon-button" onClick={onParent} aria-label="Parent mode">🔒</button>
@@ -222,17 +226,23 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
 }
 
 function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View) => void }) {
+  const completedCount = profile.completedGames.length;
   return (
     <section className="screen">
       <p className="eyebrow">Kazakhstan map</p>
       <h2>Choose a quest, {profile.name}</h2>
+      <div className="guide-card">
+        <div className="guide-avatar">🐫</div>
+        <p>Bota is ready. Complete all three learning quests, then scan a package to unlock the secret stop.</p>
+        <strong>{completedCount}/3 quests complete</strong>
+      </div>
       <div className="map">
         {locations.map((location) => {
           const unlocked = profile.unlockedLocations.includes(location.id);
           const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
           return (
             <button key={location.id} className={`location ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
-              <span>{completed ? "✓" : unlocked ? "●" : "🔒"}</span>
+              <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
               <strong>{location.city}</strong>
               <small>{location.title}</small>
               <em>{location.skill}</em>

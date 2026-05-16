@@ -19,6 +19,8 @@ label, legend { display: grid; gap: 0.35rem; font-weight: 800; }
 .center { align-items: center; justify-content: center; text-align: center; }
 .hero-screen { justify-content: center; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; background: #24311f; color: #fff8e8; }
+.brand-lockup { min-width: 0; display: grid; gap: 0.12rem; text-align: center; }
+.brand-lockup span { font-size: 0.78rem; color: #ffe28a; font-weight: 800; }
 .top-actions { display: flex; gap: 0.45rem; }
 .icon-button { width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
 .mascot { width: 116px; height: 116px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; background: #e97132; font-size: 4.2rem; border: 4px solid #24311f; }
@@ -29,6 +31,10 @@ h2 { font-size: 2rem; line-height: 1; }
 h3 { font-size: 1.35rem; }
 .lead { font-size: 1.05rem; line-height: 1.45; color: #405039; }
 .panel, .reward, .question-card, .gesture-box { border: 2px solid #dfc790; border-radius: 8px; background: #fffdfa; padding: 1rem; }
+.guide-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.7rem; border: 2px solid #24311f; border-radius: 8px; padding: 0.8rem; background: #fffdfa; box-shadow: 0 4px 0 rgba(36, 49, 31, 0.12); }
+.guide-card p { line-height: 1.35; }
+.guide-card strong { grid-column: 2; color: #246e45; }
+.guide-avatar { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #ffe28a; border: 2px solid #24311f; font-size: 1.8rem; }
 .panel { display: grid; gap: 0.9rem; }
 .primary, .segmented .active { background: #e97132; color: #fff; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
