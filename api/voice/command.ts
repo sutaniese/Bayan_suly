@@ -1,6 +1,6 @@
-const GROQ_API_BASE = "https://api.groq.com/openai/v1";
+export const config = { runtime: "edge" };
 
-export const config = { runtime: "nodejs" };
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {

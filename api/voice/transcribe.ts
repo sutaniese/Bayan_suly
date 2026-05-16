@@ -1,6 +1,6 @@
-const GROQ_API_BASE = "https://api.groq.com/openai/v1";
+export const config = { runtime: "edge" };
 
-export const config = { runtime: "nodejs" };
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -26,7 +26,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!audioBase64) return json({ error: "Missing audioBase64" }, 400);
 
   const mimeType = body.mimeType?.trim() || "audio/webm";
-  const asrModel = process.env.GROQ_ASR_MODEL?.trim() || "distil-whisper-large-v3-en";
+  const asrModel = process.env.GROQ_ASR_MODEL?.trim() || "whisper-large-v3-turbo";
 
   try {
     const binary = atob(audioBase64);

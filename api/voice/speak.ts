@@ -1,6 +1,6 @@
-const GROQ_API_BASE = "https://api.groq.com/openai/v1";
+export const config = { runtime: "edge" };
 
-export const config = { runtime: "nodejs" };
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -36,10 +36,9 @@ export default async function handler(req: Request): Promise<Response> {
       return json({ error: `Groq TTS error: ${errText.slice(0, 300)}` }, res.status);
     }
 
-    const buf = await res.arrayBuffer();
-    return new Response(buf, {
+    return new Response(res.body, {
       status: 200,
-      headers: { "Content-Type": "audio/wav", "Content-Length": String(buf.byteLength) },
+      headers: { "Content-Type": "audio/wav" },
     });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "TTS failed" }, 500);
