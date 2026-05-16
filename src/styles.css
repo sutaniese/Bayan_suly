@@ -1,0 +1,80 @@
+:root {
+  color: #24311f;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f7ead1;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, select { font: inherit; }
+button { min-height: 48px; border: 0; border-radius: 8px; padding: 0.75rem 1rem; background: #ffffff; color: #24311f; font-weight: 800; box-shadow: 0 2px 0 rgba(36, 49, 31, 0.14); }
+button:disabled { opacity: 0.5; }
+input, select { width: 100%; min-height: 48px; border: 2px solid #dfc790; border-radius: 8px; padding: 0.7rem 0.85rem; background: #fffaf0; color: #24311f; }
+fieldset { border: 0; margin: 0; padding: 0; }
+label, legend { display: grid; gap: 0.35rem; font-weight: 800; }
+
+.app { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: radial-gradient(circle at top, #fff5bf 0, #f6b21a 24%, #68b06d 76%); }
+.phone { width: min(100%, 440px); min-height: min(860px, calc(100vh - 2rem)); background: #fff8e8; border: 4px solid #24311f; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 70px rgba(36, 49, 31, 0.26); }
+.screen { min-height: 760px; padding: 1.1rem; display: flex; flex-direction: column; gap: 1rem; }
+.center { align-items: center; justify-content: center; text-align: center; }
+.hero-screen { justify-content: center; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; background: #24311f; color: #fff8e8; }
+.top-actions { display: flex; gap: 0.45rem; }
+.icon-button { width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
+.mascot { width: 116px; height: 116px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; background: #e97132; font-size: 4.2rem; border: 4px solid #24311f; }
+.eyebrow { margin: 0; color: #7a4f16; font-size: 0.78rem; text-transform: uppercase; font-weight: 900; letter-spacing: 0; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 3rem; line-height: 0.95; text-align: center; }
+h2 { font-size: 2rem; line-height: 1; }
+h3 { font-size: 1.35rem; }
+.lead { font-size: 1.05rem; line-height: 1.45; color: #405039; }
+.panel, .reward, .question-card, .gesture-box { border: 2px solid #dfc790; border-radius: 8px; background: #fffdfa; padding: 1rem; }
+.panel { display: grid; gap: 0.9rem; }
+.primary, .segmented .active { background: #e97132; color: #fff; }
+.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.map { position: relative; display: grid; gap: 0.85rem; padding: 0.7rem; border-radius: 24px; background: linear-gradient(150deg, #a7d7ef, #bddd8c 48%, #f5c56b); border: 3px solid #24311f; }
+.location { min-height: 112px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.25rem 0.75rem; text-align: left; background: #fffaf0; }
+.location span { grid-row: span 3; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #68b06d; color: #fff; }
+.location small, .location em { font-style: normal; color: #53634d; }
+.location.completed span { background: #246e45; }
+.location.locked span { background: #777; }
+.cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.memory-card { aspect-ratio: 1; min-height: 76px; font-size: 2.1rem; background: #ffe28a; }
+.status, .hint, .feedback, .badge { border-radius: 8px; padding: 0.75rem; background: #ecf7e3; color: #24311f; font-weight: 800; }
+.feedback { background: #fff0ce; }
+.big-icon { font-size: 5rem; text-align: center; }
+.answers { display: grid; gap: 0.65rem; }
+.answers button { background: #ffe28a; }
+.active-answer { outline: 4px solid #e97132; }
+.score { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: #68b06d; color: #fff; font-size: 2rem; font-weight: 900; border: 4px solid #24311f; }
+.reward-list, .toggle-list, .stats { display: grid; gap: 0.75rem; }
+.reward { display: grid; gap: 0.45rem; opacity: 0.72; }
+.reward.available { opacity: 1; border-color: #68b06d; }
+.coupon { display: grid; gap: 0.35rem; border-radius: 8px; background: #f5f0ff; padding: 0.75rem; }
+.coupon em { font-size: 0.82rem; color: #5f546d; }
+.pin { text-align: center; font-size: 1.5rem; letter-spacing: 0.25rem; }
+.stats { grid-template-columns: 1fr 1fr; }
+.stats span { min-height: 76px; display: grid; align-content: center; gap: 0.2rem; border-radius: 8px; background: #fffdfa; border: 2px solid #dfc790; padding: 0.75rem; }
+.toggle { min-height: 58px; display: flex; align-items: center; justify-content: space-between; border-radius: 8px; background: #fffdfa; border: 2px solid #dfc790; padding: 0.75rem; }
+.toggle input { width: 28px; min-height: 28px; }
+.qr { width: 150px; height: 150px; display: grid; place-items: center; border-radius: 18px; background: repeating-linear-gradient(45deg, #24311f 0 10px, #fff 10px 20px); color: #e97132; font-size: 3rem; border: 5px solid #24311f; }
+.secret-screen { background: #fff0ce; }
+.large-buttons button { min-height: 62px; font-size: 1.08rem; }
+.high-contrast .phone { background: #0b0b0b; color: #fff; border-color: #fff; }
+.high-contrast .screen, .high-contrast .topbar { background: #0b0b0b; color: #fff; }
+.high-contrast .panel, .high-contrast .reward, .high-contrast .question-card, .high-contrast .stats span, .high-contrast .toggle, .high-contrast input, .high-contrast select { background: #111; color: #fff; border-color: #fff; }
+.high-contrast .lead, .high-contrast .eyebrow, .high-contrast small, .high-contrast em { color: #ffe28a; }
+.high-contrast button { background: #ffe28a; color: #000; }
+.high-contrast .primary { background: #fff; color: #000; }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+
+@media (max-width: 420px) {
+  .app { padding: 0; }
+  .phone { min-height: 100vh; border: 0; border-radius: 0; }
+  .screen { min-height: calc(100vh - 68px); }
+  h1 { font-size: 2.6rem; }
+  h2 { font-size: 1.65rem; }
+  .cta-row { grid-template-columns: 1fr; }
+  .memory-grid { grid-template-columns: repeat(2, 1fr); }
+}
