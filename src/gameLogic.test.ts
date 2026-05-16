@@ -9,10 +9,16 @@ import {
   applyQrUnlock,
   buildAccessibilitySettings,
   buildRecommendationSummary,
+  createMemoryDeck,
+  DEFAULT_ACCESSIBILITY_SETTINGS,
   makeMathQuestions,
   makeProfile,
+  mathStepHintForQuestion,
+  memoryPairCountForSettings,
   mergeSkillProgress,
+  narrowNumericOptions,
   skillPracticeSummaryForGame,
+  wordChoicesForSettings,
 } from "./gameLogic";
 
 describe("game reward rules", () => {
@@ -131,6 +137,38 @@ describe("game reward rules", () => {
     expect(makeMathQuestions(7)[0].answer).toBe(5);
     expect(makeMathQuestions(9)[0].answer).toBe(9);
     expect(makeMathQuestions(11)[0].answer).toBe(12);
+  });
+
+  it("adapts memory pair count and deck size for focus", () => {
+    const focus = buildAccessibilitySettings(["focus"]);
+    expect(memoryPairCountForSettings(focus)).toBe(2);
+    expect(createMemoryDeck(2)).toHaveLength(4);
+    const motor = buildAccessibilitySettings(["motor"]);
+    expect(memoryPairCountForSettings(motor)).toBe(4);
+  });
+
+  it("narrows word choices when fewer options are enabled", () => {
+    const focus = buildAccessibilitySettings(["focus"]);
+    const opts = ["түйе", "тау", "су", "алма"];
+    const narrowed = wordChoicesForSettings(opts, "тау", focus);
+    expect(narrowed).toHaveLength(2);
+    expect(narrowed).toContain("тау");
+  });
+
+  it("narrows math prompts and options for focus", () => {
+    const focus = buildAccessibilitySettings(["focus"]);
+    const rows = makeMathQuestions(7, focus);
+    expect(rows[0].options).toHaveLength(2);
+    expect(rows[0].options).toContain(5);
+    expect(rows[0].prompt).toMatch(/3\s*\+\s*2/);
+    expect(mathStepHintForQuestion(rows[0].prompt)).toContain("Hint");
+  });
+
+  it("keeps three math options when only one task at a time", () => {
+    const s = { ...DEFAULT_ACCESSIBILITY_SETTINGS, enabled: true, fewerAnswerOptions: false, oneTaskAtATime: true };
+    const rows = makeMathQuestions(7, s);
+    expect(rows[0].options).toHaveLength(3);
+    expect(narrowNumericOptions(5, [4, 5, 6], 2)).toEqual([4, 5]);
   });
 
   it("starts with five playable learning locations", () => {

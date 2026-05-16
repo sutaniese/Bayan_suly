@@ -1,13 +1,17 @@
 /**
- * Optional OpenAI text-to-speech. The API key is read from `import.meta.env.VITE_OPENAI_API_KEY`
- * and is embedded in the client build — suitable for hackathon demos only; use a backend proxy for production.
+ * Optional Groq text-to-speech via the OpenAI-compatible speech API.
+ * Key: `import.meta.env.VITE_GROQ_API_KEY` (embedded in the client — demo/hackathon only unless proxied).
+ *
+ * @see https://console.groq.com/docs/text-to-speech
  */
 
 import type { Language } from "./gameLogic";
 
+const GROQ_SPEECH_URL = "https://api.groq.com/openai/v1/audio/speech";
+
 let currentAudio: HTMLAudioElement | null = null;
 
-export function cancelOpenAiPlayback() {
+export function cancelGroqPlayback() {
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.removeAttribute("src");
@@ -17,27 +21,31 @@ export function cancelOpenAiPlayback() {
 }
 
 /**
- * @returns true if OpenAI audio started playing, false to fall back to `speechSynthesis`.
+ * @returns true if Groq audio started playing, false to fall back to `speechSynthesis`.
  */
-export async function tryPlayOpenAiSpeech(text: string, apiKey: string, _language: Language): Promise<boolean> {
+export async function tryPlayGroqSpeech(text: string, apiKey: string, _language: Language): Promise<boolean> {
   const trimmed = text.trim();
   if (!trimmed || !apiKey.trim()) return false;
 
-  cancelOpenAiPlayback();
+  cancelGroqPlayback();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
+  const model = import.meta.env.VITE_GROQ_TTS_MODEL?.trim() || "canopylabs/orpheus-v1-english";
+  const voice = import.meta.env.VITE_GROQ_TTS_VOICE?.trim() || "hannah";
+  const responseFormat = (import.meta.env.VITE_GROQ_TTS_FORMAT?.trim() as "wav" | "mp3" | undefined) || "wav";
+
   try {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    const res = await fetch(GROQ_SPEECH_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey.trim()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tts-1",
-        voice: "nova",
+        model,
+        voice,
         input: trimmed.slice(0, 4096),
-        response_format: "mp3",
+        response_format: responseFormat,
       }),
     });
 

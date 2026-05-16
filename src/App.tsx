@@ -9,8 +9,14 @@ import {
   applyQrItemScan,
   getSessionForDate,
   getUserProfile,
+  createMemoryDeck,
   makeMathQuestions,
   makeProfile,
+  mathStepHintForQuestion,
+  memoryDoubleTapGuardMs,
+  memoryFlipBackMs,
+  memoryPairCountForSettings,
+  memorySpeakCardOnReveal,
   saveUserProfile,
   QR_ITEMS,
   SESSION_ACTIVITY_LABELS,
@@ -22,6 +28,7 @@ import {
   sessionHasLearningActivity,
   skillPracticeSummaryForGame,
   totalSkillProgress,
+  wordChoicesForSettings,
 } from "./gameLogic";
 import type {
   AccessibilitySettings,
@@ -33,7 +40,7 @@ import type {
   SupportNeed,
   UserProfile,
 } from "./gameLogic";
-import { cancelOpenAiPlayback, tryPlayOpenAiSpeech } from "./openaiTts";
+import { cancelGroqPlayback, tryPlayGroqSpeech } from "./groqTts";
 
 type VoiceCommand =
   | "open_map"
@@ -143,16 +150,14 @@ const rewards: Reward[] = [
 ];
 
 const wordQuestions = [
-  { icon: "🐫", prompt: "Camel", answer: "түйе", options: ["түйе", "тау", "су"], fact: "Түйе means camel." },
-  { icon: "⛰️", prompt: "Mountain", answer: "тау", options: ["алма", "тау", "дала"], fact: "Тау means mountain." },
-  { icon: "🍎", prompt: "Apple", answer: "алма", options: ["су", "алма", "түйе"], fact: "Алма means apple." },
-  { icon: "💧", prompt: "Water", answer: "су", options: ["дала", "су", "тау"], fact: "Су means water." },
-  { icon: "🌾", prompt: "Steppe", answer: "дала", options: ["дала", "алма", "түйе"], fact: "Дала means steppe." },
+  { icon: "🐫", prompt: "Camel", answer: "түйе", options: ["түйе", "тау", "су", "алма"], fact: "Түйе means camel." },
+  { icon: "⛰️", prompt: "Mountain", answer: "тау", options: ["алма", "тау", "дала", "түйе"], fact: "Тау means mountain." },
+  { icon: "🍎", prompt: "Apple", answer: "алма", options: ["су", "алма", "түйе", "дала"], fact: "Алма means apple." },
+  { icon: "💧", prompt: "Water", answer: "су", options: ["дала", "су", "тау", "алма"], fact: "Су means water." },
+  { icon: "🌾", prompt: "Steppe", answer: "дала", options: ["дала", "алма", "түйе", "тау"], fact: "Дала means steppe." },
 ];
 
 const getToday = () => new Date().toISOString().slice(0, 10);
-
-const memoryDeck = ["🍬", "🍫", "🍭", "🐫"].flatMap((card) => [card, card]);
 
 const patternQuestions = [
   { sequence: ["🍬", "🍫", "🍬", "🍫", "?"], answer: "🍬", options: ["🍬", "🍭", "🐫"], rule: "The sweets alternate." },
@@ -285,9 +290,9 @@ function App() {
 
   const speak = useCallback(
     (text: string) => {
-      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim();
+      const groqKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
       const runBrowser = () => {
-        cancelOpenAiPlayback();
+        cancelGroqPlayback();
         if (!("speechSynthesis" in window)) return;
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
@@ -295,8 +300,8 @@ function App() {
         utterance.lang = lang;
         window.speechSynthesis.speak(utterance);
       };
-      if (openaiKey) {
-        void tryPlayOpenAiSpeech(text, openaiKey, profile?.language ?? "ru").then((ok) => {
+      if (groqKey) {
+        void tryPlayGroqSpeech(text, groqKey, profile?.language ?? "ru").then((ok) => {
           if (!ok) runBrowser();
         });
         return;
@@ -328,6 +333,7 @@ function App() {
           {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
           {profile && view === "memory" && (
             <MemoryGame
+              language={profile.language}
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
               onDone={() =>
@@ -1100,33 +1106,74 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
   );
 }
 
+const MEMORY_CARD_VOICE: Record<string, { ru: string; kz: string }> = {
+  "🍬": { ru: "конфета", kz: "қант" },
+  "🍫": { ru: "шоколад", kz: "шоколад" },
+  "🍭": { ru: "леденец", kz: "тәтті сағыз" },
+  "🐫": { ru: "верблюд", kz: "түйе" },
+};
+
 function MemoryGame({
+  language,
   accessibility,
   onDone,
   onSpeak,
   onRegisterInstruction,
 }: {
+  language: Language;
   accessibility: AccessibilitySettings;
   onDone: () => void;
   onSpeak: (text: string) => void;
   onRegisterInstruction?: (info: { title: string; hint: string }) => void;
 }) {
+  const pairCount = memoryPairCountForSettings(accessibility);
+  const deck = useMemo(() => createMemoryDeck(pairCount), [pairCount]);
+  const flipMs = memoryFlipBackMs(accessibility);
+  const speakOnReveal = memorySpeakCardOnReveal(accessibility);
+  const doubleTapGuardMs = memoryDoubleTapGuardMs(accessibility);
+  const lastTapRef = useRef<{ index: number; t: number }>({ index: -1, t: 0 });
+
   const [flipped, setFlipped] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
 
-  useEffect(() => {
-    if (flipped.length === 2) {
-      setMoves((value) => value + 1);
-      const [a, b] = flipped;
-      if (memoryDeck[a] === memoryDeck[b]) setMatched((value) => [...value, a, b]);
-      window.setTimeout(() => setFlipped([]), 650);
-    }
-  }, [flipped]);
+  const largeCards = accessibility.largeText || accessibility.extraLargeTouchTargets || accessibility.largeButtons;
 
   useEffect(() => {
-    if (matched.length === memoryDeck.length) onDone();
-  }, [matched, onDone]);
+    setFlipped([]);
+    setMatched([]);
+    setMoves(0);
+  }, [pairCount]);
+
+  useEffect(() => {
+    if (flipped.length !== 2) return;
+    setMoves((value) => value + 1);
+    const [a, b] = flipped;
+    if (deck[a] === deck[b]) setMatched((value) => [...value, a, b]);
+    window.setTimeout(() => setFlipped([]), flipMs);
+  }, [flipped, deck, flipMs]);
+
+  useEffect(() => {
+    if (matched.length === deck.length && deck.length > 0) onDone();
+  }, [matched, deck, onDone]);
+
+  const tapCard = (index: number) => {
+    const visible = flipped.includes(index) || matched.includes(index);
+    if (visible || flipped.length === 2) return;
+    if (flipped.includes(index)) return;
+    const now = Date.now();
+    if (doubleTapGuardMs > 0 && lastTapRef.current.index === index && now - lastTapRef.current.t < doubleTapGuardMs) return;
+    lastTapRef.current = { index, t: now };
+    if (speakOnReveal) {
+      const sym = deck[index];
+      const labels = MEMORY_CARD_VOICE[sym];
+      const line = labels ? (language === "kz" ? labels.kz : labels.ru) : sym;
+      queueMicrotask(() => onSpeak(line));
+    }
+    setFlipped((prev) => [...prev, index]);
+  };
+
+  const gridPairsClass = pairCount === 2 ? "memory-grid--pairs2" : pairCount === 3 ? "memory-grid--pairs3" : "memory-grid--pairs4";
 
   return (
     <GameShell
@@ -1136,13 +1183,25 @@ function MemoryGame({
       onSpeak={onSpeak}
       onRegisterInstruction={onRegisterInstruction}
     >
-      <div className="memory-grid">
-        {memoryDeck.map((card, index) => {
+      <div className={`memory-grid ${gridPairsClass}${largeCards ? " memory-grid--large-cards" : ""}`}>
+        {deck.map((card, index) => {
           const visible = flipped.includes(index) || matched.includes(index);
-          return <button key={`${card}-${index}`} className="memory-card" disabled={visible || flipped.length === 2} onClick={() => setFlipped([...flipped, index])}>{visible ? card : "?"}</button>;
+          return (
+            <button
+              key={`${card}-${index}`}
+              type="button"
+              className={`memory-card${largeCards ? " memory-card--boost" : ""}${accessibility.reducedAnimations ? " memory-card--calm" : ""}`}
+              disabled={visible || flipped.length === 2}
+              onClick={() => tapCard(index)}
+            >
+              {visible ? card : "?"}
+            </button>
+          );
         })}
       </div>
-      <p className="status">🎯 Moves: {moves} · Matches: {matched.length / 2}/4</p>
+      <p className="status">
+        🎯 Moves: {moves} · Matches: {matched.length / 2}/{pairCount}
+      </p>
     </GameShell>
   );
 }
@@ -1161,10 +1220,20 @@ function WordsGame({
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [feedback, setFeedback] = useState("");
+  const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = wordQuestions[index];
+
+  const options = useMemo(
+    () => wordChoicesForSettings(wordQuestions[index].options, wordQuestions[index].answer, accessibility),
+    [index, accessibility.fewerAnswerOptions],
+  );
+
+  const readOptionAloud = accessibility.voiceInstructions && (accessibility.largeText || accessibility.highContrast);
+  const hearingText = accessibility.subtitles || accessibility.textHints;
 
   const answer = (option: string) => {
     const ok = option === question.answer;
+    setLastOk(ok);
     const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
     setFeedback(ok ? `Correct. ${question.fact}` : `Try again. ${question.fact}`);
@@ -1173,6 +1242,7 @@ function WordsGame({
       else {
         setIndex(index + 1);
         setFeedback("");
+        setLastOk(null);
       }
     }, 700);
   };
@@ -1188,9 +1258,31 @@ function WordsGame({
       <div className="question-card">
         <div className="big-icon">{question.icon}</div>
         <h3>{question.prompt}</h3>
+        {hearingText && <p className="word-prompt-text">Pick the Kazakh word that matches the picture. Everything is written — no sound required.</p>}
       </div>
-      <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
-      {feedback && <p className="feedback">{feedback}</p>}
+      <div className={`answers answers--words${accessibility.extraLargeTouchTargets ? " answers--xlarge" : ""}`}>
+        {options.map((option) => (
+          <div className="answer-with-audio" key={option}>
+            <button type="button" className="answer-main" onClick={() => answer(option)}>
+              {option}
+            </button>
+            {readOptionAloud && (
+              <button type="button" className="answer-read" aria-label="Read this word aloud" onClick={() => onSpeak(option)}>
+                🔊
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {feedback && (
+        <p
+          className={`feedback${accessibility.visualFeedback ? (lastOk ? " feedback--ok" : " feedback--miss") : ""}`}
+          role="status"
+        >
+          {accessibility.visualFeedback && <span className="feedback-icon" aria-hidden>{lastOk ? "✅ " : "✖️ "}</span>}
+          {feedback}
+        </p>
+      )}
     </GameShell>
   );
 }
@@ -1208,37 +1300,101 @@ function MathGame({
   onSpeak: (text: string) => void;
   onRegisterInstruction?: (info: { title: string; hint: string }) => void;
 }) {
-  const questions = useMemo(() => makeMathQuestions(age), [age]);
+  const mathSettingsKey = `${accessibility.fewerAnswerOptions}-${accessibility.oneTaskAtATime}`;
+  const questions = useMemo(() => makeMathQuestions(age, accessibility), [age, mathSettingsKey]);
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [active, setActive] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null);
   const question = questions[index];
+  const focusMath = accessibility.fewerAnswerOptions || accessibility.oneTaskAtATime;
+  const readProblemAloud = accessibility.voiceInstructions && (accessibility.largeText || accessibility.highContrast);
 
-  const answer = (option: number) => {
-    const nextCorrect = correct + (option === question.answer ? 1 : 0);
-    setCorrect(nextCorrect);
+  useEffect(() => {
+    setIndex(0);
+    setCorrect(0);
+    setActive(0);
+    setPicked(null);
+  }, [age, mathSettingsKey]);
+
+  const advance = (nextCorrect: number) => {
     if (index === questions.length - 1) onDone(Math.round((nextCorrect / questions.length) * 100));
     else {
       setIndex(index + 1);
       setActive(0);
+      setPicked(null);
     }
+  };
+
+  const submitAnswer = (option: number) => {
+    const nextCorrect = correct + (option === question.answer ? 1 : 0);
+    setCorrect(nextCorrect);
+    advance(nextCorrect);
+  };
+
+  const pickOption = (option: number) => {
+    if (accessibility.confirmBeforeActions) {
+      setPicked((prev) => (prev === option ? null : option));
+      return;
+    }
+    submitAnswer(option);
   };
 
   return (
     <GameShell title="Counting with Bota" instruction={MATH_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
-      <div className="question-card"><h3>{question.prompt}</h3></div>
+      <div className={`question-card${accessibility.largeText || accessibility.highContrast ? " question-card--math-large" : ""}`}>
+        <h3>{question.prompt}</h3>
+        {focusMath && <p className="math-step-hint">{mathStepHintForQuestion(question.prompt)}</p>}
+        {readProblemAloud && (
+          <button type="button" className="read-problem-btn" onClick={() => onSpeak(question.prompt)}>
+            🔊 Read question
+          </button>
+        )}
+      </div>
       {accessibility.gestureAnswerMode && (
         <div className="gesture-box">
           <strong>Gesture Mode mock</strong>
           <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
           <div className="cta-row">
-            <button onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
-            <button onClick={() => onSpeak(question.prompt)}>✋ Repeat</button>
-            <button onClick={() => answer(question.options[active])}>👍 Select {question.options[active]}</button>
+            <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
+            <button type="button" onClick={() => onSpeak(question.prompt)}>✋ Repeat</button>
+            <button
+              type="button"
+              onClick={() => {
+                const opt = question.options[active];
+                if (opt === undefined) return;
+                if (accessibility.confirmBeforeActions) setPicked(opt);
+                else submitAnswer(opt);
+              }}
+            >
+              👍 Select {question.options[active]}
+            </button>
           </div>
         </div>
       )}
-      <div className="answers">{question.options.map((option, optionIndex) => <button key={option} className={optionIndex === active ? "active-answer" : ""} onClick={() => answer(option)}>{option}</button>)}</div>
+      {accessibility.confirmBeforeActions && picked !== null && (
+        <div className="confirm-answer-bar" role="region" aria-label="Confirm your answer">
+          <span>Selected: {picked}</span>
+          <button type="button" className="primary" onClick={() => submitAnswer(picked)}>
+            Confirm answer
+          </button>
+          <button type="button" onClick={() => setPicked(null)}>
+            Change
+          </button>
+        </div>
+      )}
+      <div className={`answers${accessibility.extraLargeTouchTargets ? " answers--xlarge" : ""}`}>
+        {question.options.map((option, optionIndex) => (
+          <button
+            key={option}
+            type="button"
+            className={`${optionIndex === active ? "active-answer" : ""}${picked === option ? " picked-answer" : ""}`}
+            onClick={() => pickOption(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
     </GameShell>
   );
 }

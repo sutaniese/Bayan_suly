@@ -705,6 +705,79 @@ export function applyGameAward(
   };
 }
 
+/** Default emoji pool for the memory mini-game (pairs are drawn from the start of this list). */
+export const DEFAULT_MEMORY_SYMBOLS = ["🍬", "🍫", "🍭", "🐫"] as const;
+
+/** How many matching pairs to show: focus loads use fewer cards (Phase 8). */
+export function memoryPairCountForSettings(settings: AccessibilitySettings): 2 | 3 | 4 {
+  if (settings.fewerAnswerOptions) return 2;
+  if (settings.oneTaskAtATime) return 3;
+  return 4;
+}
+
+/** Build a shuffled deck of `pairCount * 2` cards (two of each symbol). */
+export function createMemoryDeck(pairCount: 2 | 3 | 4, pool: readonly string[] = DEFAULT_MEMORY_SYMBOLS): string[] {
+  const symbols = pool.slice(0, pairCount);
+  const deck = symbols.flatMap((card) => [card, card]);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = deck[i];
+    deck[i] = deck[j]!;
+    deck[j] = t!;
+  }
+  return deck;
+}
+
+/** Flip-back delay for mismatched memory cards (ms). */
+export function memoryFlipBackMs(settings: AccessibilitySettings): number {
+  return settings.reducedAnimations ? 320 : 650;
+}
+
+/** Speak the revealed card when vision-style support is on (optional audio cue). */
+export function memorySpeakCardOnReveal(settings: AccessibilitySettings): boolean {
+  return settings.voiceInstructions && (settings.largeText || settings.highContrast || settings.simplifiedVisuals);
+}
+
+/** Ignore rapid repeat taps on the same card (motor / accidental double-tap). */
+export function memoryDoubleTapGuardMs(settings: AccessibilitySettings): number {
+  return settings.extraLargeTouchTargets || settings.confirmBeforeActions ? 420 : 0;
+}
+
+/** Kazakh word game: standard shows all choices; focus mode shows two (correct + one distractor). */
+export function wordChoicesForSettings(allOptions: string[], answer: string, settings: AccessibilitySettings): string[] {
+  if (!settings.fewerAnswerOptions) return allOptions;
+  const wrong = allOptions.filter((o) => o !== answer).sort((a, b) => a.localeCompare(b, "kk"));
+  const pick = wrong[0] ?? answer;
+  return [answer, pick].sort((a, b) => a.localeCompare(b, "kk"));
+}
+
+/** Keep `answer` and up to `maxWrong` wrong options, sorted for stable UI/tests. */
+export function narrowNumericOptions(answer: number, options: number[], maxTotal: 2 | 3): number[] {
+  const wrong = options.filter((n) => n !== answer).sort((a, b) => a - b);
+  const wrongKeep = wrong.slice(0, maxTotal - 1);
+  return [...wrongKeep, answer].sort((a, b) => a - b);
+}
+
+/** Short hint for step-by-step math support (focus / cognitive load). */
+export function mathStepHintForQuestion(prompt: string): string {
+  if (/=\s*\?\s*$/.test(prompt) || /^\d+\s*,\s*\d+/.test(prompt.trim())) {
+    return "Hint: work out the numbers step by step, then pick the matching answer.";
+  }
+  if (/how many\?/i.test(prompt) || /total\?/i.test(prompt) || /equals\?/i.test(prompt)) {
+    return "Hint: add or subtract the numbers in the story, then pick your answer.";
+  }
+  if (/shares|minus|remain/i.test(prompt)) {
+    return "Hint: start with the first number, then take away the second.";
+  }
+  if (/completes/i.test(prompt)) {
+    return "Hint: look at how the list grows from one number to the next.";
+  }
+  if (/each|boxes/i.test(prompt)) {
+    return "Hint: multiply or add the same amount several times.";
+  }
+  return "Hint: read the story slowly, then choose the number that fits.";
+}
+
 export function applyQrUnlock(profile: UserProfile): UserProfile {
   const alreadyAwarded = profile.awardedEvents.includes("qr:secret");
   const unlockedStickers = Array.from(new Set([...profile.unlockedStickers, "sticker-bota-pack"]));
@@ -727,24 +800,83 @@ export function applyQrUnlock(profile: UserProfile): UserProfile {
   });
 }
 
-export function makeMathQuestions(age: Age) {
-  if (age === 7) {
-    return [
-      { prompt: "Bota had 3 sweets and found 2 more. How many?", answer: 5, options: [4, 5, 6] },
-      { prompt: "There are 4 apples and 3 more arrive. Total?", answer: 7, options: [6, 7, 8] },
-      { prompt: "Bota sees 5 stars and 5 more. Total?", answer: 10, options: [9, 10, 11] },
-    ];
+type MathQuestionSeed = { prompt: string; shortPrompt: string; answer: number; options: number[] };
+
+function adaptMathQuestionRow(seed: MathQuestionSeed, settings?: AccessibilitySettings) {
+  const cognitive = Boolean(settings?.fewerAnswerOptions || settings?.oneTaskAtATime);
+  const prompt = cognitive ? seed.shortPrompt : seed.prompt;
+  let options = seed.options;
+  if (settings?.fewerAnswerOptions) {
+    options = narrowNumericOptions(seed.answer, seed.options, 2);
+  } else if (settings?.oneTaskAtATime) {
+    options = narrowNumericOptions(seed.answer, seed.options, 3);
   }
-  if (age <= 9) {
-    return [
-      { prompt: "Bota has 14 sweets and shares 5. How many remain?", answer: 9, options: [8, 9, 10] },
-      { prompt: "A basket has 8 apples. Add 7 more. Total?", answer: 15, options: [14, 15, 16] },
-      { prompt: "20 coins minus 6 coins equals?", answer: 14, options: [12, 14, 16] },
-    ];
-  }
-  return [
-    { prompt: "Bota packs 3 boxes with 4 sweets each. Total?", answer: 12, options: [10, 12, 14] },
-    { prompt: "Two families each get 6 candies. Total?", answer: 12, options: [8, 12, 16] },
-    { prompt: "Which number completes 5, 10, 15, ?", answer: 20, options: [18, 20, 25] },
-  ];
+  return { prompt, answer: seed.answer, options };
+}
+
+export function makeMathQuestions(age: Age, settings?: AccessibilitySettings) {
+  const seeds: MathQuestionSeed[] =
+    age === 7
+      ? [
+          {
+            prompt: "Bota had 3 sweets and found 2 more. How many?",
+            shortPrompt: "3 + 2 = ?",
+            answer: 5,
+            options: [4, 5, 6],
+          },
+          {
+            prompt: "There are 4 apples and 3 more arrive. Total?",
+            shortPrompt: "4 + 3 = ?",
+            answer: 7,
+            options: [6, 7, 8],
+          },
+          {
+            prompt: "Bota sees 5 stars and 5 more. Total?",
+            shortPrompt: "5 + 5 = ?",
+            answer: 10,
+            options: [9, 10, 11],
+          },
+        ]
+      : age <= 9
+        ? [
+            {
+              prompt: "Bota has 14 sweets and shares 5. How many remain?",
+              shortPrompt: "14 − 5 = ?",
+              answer: 9,
+              options: [8, 9, 10],
+            },
+            {
+              prompt: "A basket has 8 apples. Add 7 more. Total?",
+              shortPrompt: "8 + 7 = ?",
+              answer: 15,
+              options: [14, 15, 16],
+            },
+            {
+              prompt: "20 coins minus 6 coins equals?",
+              shortPrompt: "20 − 6 = ?",
+              answer: 14,
+              options: [12, 14, 16],
+            },
+          ]
+        : [
+            {
+              prompt: "Bota packs 3 boxes with 4 sweets each. Total?",
+              shortPrompt: "3 × 4 = ?",
+              answer: 12,
+              options: [10, 12, 14],
+            },
+            {
+              prompt: "Two families each get 6 candies. Total?",
+              shortPrompt: "6 + 6 = ?",
+              answer: 12,
+              options: [8, 12, 16],
+            },
+            {
+              prompt: "Which number completes 5, 10, 15, ?",
+              shortPrompt: "5, 10, 15, ?",
+              answer: 20,
+              options: [18, 20, 25],
+            },
+          ];
+  return seeds.map((row) => adaptMathQuestionRow(row, settings));
 }
