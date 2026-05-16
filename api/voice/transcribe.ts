@@ -8,10 +8,8 @@ type TranscribeRequest = {
   language?: string;
 };
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
+async function handleRequest(request: Request): Promise<Response> {
+  if (request.method !== "POST") return errorResponse("Method not allowed", 405);
 
   let body: TranscribeRequest;
   try {
@@ -52,3 +50,7 @@ export default async function handler(request: Request): Promise<Response> {
     return errorResponse(message, 500);
   }
 }
+
+export default {
+  fetch: handleRequest,
+};

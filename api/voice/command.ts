@@ -9,10 +9,8 @@ type CommandRequest = {
   context?: VoiceAgentContext;
 };
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
+async function handleRequest(request: Request): Promise<Response> {
+  if (request.method !== "POST") return errorResponse("Method not allowed", 405);
 
   let body: CommandRequest;
   try {
@@ -107,7 +105,7 @@ export default async function handler(request: Request): Promise<Response> {
       transcript,
       source: actionValue === action ? "llm" : "fallback",
     } satisfies VoiceCommandResolution);
-  } catch (error) {
+  } catch {
     const fallback = matchVoiceCommand(transcript);
     const action = fallback && context.allowedCommands.includes(fallback) ? fallback : null;
     return jsonResponse(
@@ -121,3 +119,7 @@ export default async function handler(request: Request): Promise<Response> {
     );
   }
 }
+
+export default {
+  fetch: handleRequest,
+};
