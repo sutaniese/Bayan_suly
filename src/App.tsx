@@ -2171,14 +2171,17 @@ function ParentDashboard({
 }
 
 function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfile; onChange: (profile: UserProfile) => void; onBack: () => void }) {
-  const set = (key: keyof AccessibilitySettings) =>
+  const set = (key: keyof AccessibilitySettings) => {
+    const nextSettings = { ...profile.adaptiveProfile.settings, [key]: !profile.adaptiveProfile.settings[key] };
     onChange({
       ...profile,
       adaptiveProfile: {
         ...profile.adaptiveProfile,
-        settings: { ...profile.adaptiveProfile.settings, [key]: !profile.adaptiveProfile.settings[key] },
+        settings: nextSettings,
+        recommendationSummary: buildRecommendationSummary(profile.adaptiveProfile.supportNeeds, nextSettings),
       },
     });
+  };
   const items: [keyof AccessibilitySettings, string][] = [
     ["largeText", "Large Text"],
     ["largeButtons", "Large Buttons"],
