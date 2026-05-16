@@ -177,6 +177,52 @@ export const defaultSkillProgress: SkillProgress = {
   culture: 0,
 };
 
+export const SKILL_GARDEN = [
+  { skill: "memory" as const, label: "Memory", visual: "🌸", description: "Grows when you complete memory games." },
+  { skill: "math" as const, label: "Math", visual: "🌳", description: "Grows when you solve counting tasks." },
+  { skill: "language" as const, label: "Kazakh Words", visual: "⛺", description: "Grows when you learn Kazakh words." },
+  { skill: "culture" as const, label: "Kazakhstan Culture", visual: "☀️", description: "Grows when you discover facts about Kazakhstan." },
+];
+
+function capSkillValue(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+export function getGrowthStage(value: number) {
+  if (value >= 81) return "Fully grown";
+  if (value >= 51) return "Strong";
+  if (value >= 21) return "Growing";
+  return "Seed";
+}
+
+export function totalSkillProgress(sp: SkillProgress) {
+  return sp.memory + sp.math + sp.language + sp.culture;
+}
+
+export function mergeSkillProgress(profile: UserProfile, deltas: Partial<SkillProgress>): UserProfile {
+  const sp = profile.skillProgress;
+  const next: SkillProgress = {
+    memory: capSkillValue(sp.memory + (deltas.memory ?? 0)),
+    math: capSkillValue(sp.math + (deltas.math ?? 0)),
+    language: capSkillValue(sp.language + (deltas.language ?? 0)),
+    culture: capSkillValue(sp.culture + (deltas.culture ?? 0)),
+  };
+  const unlockedStickers =
+    totalSkillProgress(next) >= 100 && !profile.unlockedStickers.includes("sticker-skill-garden")
+      ? Array.from(new Set([...profile.unlockedStickers, "sticker-skill-garden"]))
+      : profile.unlockedStickers;
+  return { ...profile, skillProgress: next, unlockedStickers };
+}
+
+function skillDeltasForGame(gameId: string): Partial<SkillProgress> | null {
+  if (gameId === "memory") return { memory: 20 };
+  if (gameId === "math") return { math: 20 };
+  if (gameId === "words") return { language: 20, culture: 10 };
+  if (gameId === "patterns") return { memory: 15 };
+  if (gameId === "culture") return { culture: 20 };
+  return null;
+}
+
 export function makeProfile(name: string, age: Age, language: Language): UserProfile {
   return {
     name,
@@ -262,13 +308,18 @@ export function applyDailyChest(profile: UserProfile, date: string, reward: Dail
     ? Array.from(new Set([...profile.unlockedStickers, reward.stickerId]))
     : profile.unlockedStickers;
 
-  return {
-    profile: {
+  const withSkills = mergeSkillProgress(
+    {
       ...profile,
       coins: profile.coins + reward.coins,
       openedDailyChestDates: Array.from(new Set([...profile.openedDailyChestDates, date])),
       unlockedStickers,
     },
+    { culture: 5 },
+  );
+
+  return {
+    profile: withSkills,
     alreadyOpened: false,
     coinsEarned: reward.coins,
     stickerUnlocked,
@@ -295,15 +346,17 @@ export function applyQrItemScan(profile: UserProfile, item: QrItem) {
     ? Array.from(new Set([...profile.unlockedLocations, "secret"]))
     : profile.unlockedLocations;
 
+  const afterScan = {
+    ...profile,
+    coins: profile.coins + item.rewardCoins,
+    scannedQrItems: Array.from(new Set([...profile.scannedQrItems, item.id])),
+    unlockedStickers,
+    unlockedLocations,
+    awardedEvents: Array.from(new Set([...profile.awardedEvents, `qr-item:${item.id}`])),
+  };
+
   return {
-    profile: {
-      ...profile,
-      coins: profile.coins + item.rewardCoins,
-      scannedQrItems: Array.from(new Set([...profile.scannedQrItems, item.id])),
-      unlockedStickers,
-      unlockedLocations,
-      awardedEvents: Array.from(new Set([...profile.awardedEvents, `qr-item:${item.id}`])),
-    },
+    profile: mergeSkillProgress(afterScan, { culture: 5 }),
     alreadyScanned: false,
     coinsEarned: item.rewardCoins,
     stickerUnlocked,
@@ -326,15 +379,21 @@ export function applyGameAward(
     ? Array.from(new Set([...profile.unlockedStickers, stickerId]))
     : profile.unlockedStickers;
 
+  let nextProfile: UserProfile = {
+    ...profile,
+    coins: profile.coins + coinsEarned,
+    completedGames: Array.from(new Set([...profile.completedGames, gameId])),
+    badges: badge ? Array.from(new Set([...profile.badges, badge])) : profile.badges,
+    unlockedStickers,
+    awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, eventId],
+  };
+  if (!alreadyAwarded) {
+    const deltas = skillDeltasForGame(gameId);
+    if (deltas) nextProfile = mergeSkillProgress(nextProfile, deltas);
+  }
+
   return {
-    profile: {
-      ...profile,
-      coins: profile.coins + coinsEarned,
-      completedGames: Array.from(new Set([...profile.completedGames, gameId])),
-      badges: badge ? Array.from(new Set([...profile.badges, badge])) : profile.badges,
-      unlockedStickers,
-      awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, eventId],
-    },
+    profile: nextProfile,
     coinsEarned,
     alreadyAwarded,
   };
@@ -343,13 +402,14 @@ export function applyGameAward(
 export function applyQrUnlock(profile: UserProfile): UserProfile {
   const alreadyAwarded = profile.awardedEvents.includes("qr:secret");
   const unlockedStickers = Array.from(new Set([...profile.unlockedStickers, "sticker-bota-pack"]));
-  return {
+  const base = {
     ...profile,
     coins: profile.coins + (alreadyAwarded ? 0 : 15),
     unlockedLocations: Array.from(new Set([...profile.unlockedLocations, "secret"])),
     unlockedStickers,
     awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, "qr:secret"],
   };
+  return alreadyAwarded ? base : mergeSkillProgress(base, { culture: 5 });
 }
 
 export function makeMathQuestions(age: Age) {

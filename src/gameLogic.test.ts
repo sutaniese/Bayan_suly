@@ -9,6 +9,7 @@ import {
   applyQrUnlock,
   makeMathQuestions,
   makeProfile,
+  mergeSkillProgress,
 } from "./gameLogic";
 
 describe("game reward rules", () => {
@@ -21,8 +22,10 @@ describe("game reward rules", () => {
     expect(first.profile.completedGames).toEqual(["memory"]);
     expect(first.profile.badges).toEqual(["Memory Master"]);
     expect(first.profile.unlockedStickers).toContain("sticker-almaty-mountains");
+    expect(first.profile.skillProgress.memory).toBe(20);
     expect(second.coinsEarned).toBe(0);
     expect(second.profile.coins).toBe(30);
+    expect(second.profile.skillProgress.memory).toBe(20);
   });
 
   it("unlocks QR location and awards QR coins once", () => {
@@ -31,7 +34,9 @@ describe("game reward rules", () => {
 
     expect(first.coins).toBe(15);
     expect(first.unlockedLocations).toContain("secret");
+    expect(first.skillProgress.culture).toBe(5);
     expect(second.coins).toBe(15);
+    expect(second.skillProgress.culture).toBe(5);
   });
 
   it("opens daily chest once per day", () => {
@@ -42,6 +47,7 @@ describe("game reward rules", () => {
     expect(first.coinsEarned).toBe(DAILY_CHEST_REWARD.coins);
     expect(first.profile.coins).toBe(DAILY_CHEST_REWARD.coins);
     expect(first.profile.openedDailyChestDates).toContain(today);
+    expect(first.profile.skillProgress.culture).toBe(5);
     expect(second.coinsEarned).toBe(0);
     expect(second.profile.coins).toBe(DAILY_CHEST_REWARD.coins);
   });
@@ -54,7 +60,13 @@ describe("game reward rules", () => {
     expect(first.coinsEarned).toBe(item.rewardCoins);
     expect(first.profile.scannedQrItems).toContain(item.id);
     expect(first.profile.unlockedStickers).toContain(item.rewardStickerId);
+    expect(first.profile.skillProgress.culture).toBe(5);
     expect(second.coinsEarned).toBe(0);
+  });
+
+  it("unlocks skill garden sticker when total skill points reach 100", () => {
+    const p = mergeSkillProgress(makeProfile("Amina", 8, "kz"), { memory: 100 });
+    expect(p.unlockedStickers).toContain("sticker-skill-garden");
   });
 
   it("uses age-based math difficulty", () => {

@@ -1016,6 +1016,119 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
     var(--bg-warm);
 }
 
+.skill-garden-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skill-garden-total {
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(129, 199, 132, 0.25), rgba(255, 213, 79, 0.2));
+  border: 2px solid rgba(76, 175, 80, 0.35);
+}
+
+.skill-garden-total strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 0.35rem;
+}
+
+.skill-garden-total small {
+  display: block;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.skill-garden-caption {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.skill-garden-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.skill-plant-card {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 2px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.skill-plant-top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.skill-plant-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.skill-plant-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.skill-stage {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.skill-plant-desc {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.skill-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.skill-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-mint));
+  transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.skill-bar.large {
+  height: 14px;
+}
+
+.skill-bar.large > span {
+  background: linear-gradient(90deg, #66bb6a, #ffd54f);
+}
+
+.skill-percent {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.garden-unlocked-banner {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(129, 199, 132, 0.3);
+  border: 2px dashed var(--accent-green);
+  text-align: center;
+}
+
 .large-buttons button { min-height: 64px; font-size: 1.1rem; }
 .large-buttons .answers button { min-height: 72px; font-size: 1.15rem; }
 
@@ -1027,9 +1140,13 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast select, .high-contrast .guide-card, .high-contrast .bota-bubble,
 .high-contrast .daily-chest-card, .high-contrast .fact-card, .high-contrast .sticker-pill,
 .high-contrast .sticker-card, .high-contrast .sticker-detail, .high-contrast .album-progress,
-.high-contrast .qr-card, .high-contrast .qr-note {
+.high-contrast .qr-card, .high-contrast .qr-note,
+.high-contrast .skill-plant-card, .high-contrast .skill-garden-total,
+.high-contrast .garden-unlocked-banner {
   background: #111; color: #fff; border-color: #fff;
 }
+.high-contrast .skill-bar { background: #333; }
+.high-contrast .skill-bar > span { background: #fff; }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,
 .high-contrast em, .high-contrast .brand-lockup span { color: var(--accent-yellow); }
 .high-contrast button { background: var(--accent-yellow); color: #000; }

@@ -12,6 +12,9 @@ import {
   makeProfile,
   saveUserProfile,
   QR_ITEMS,
+  SKILL_GARDEN,
+  getGrowthStage,
+  totalSkillProgress,
 } from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, QrItem, UserProfile } from "./gameLogic";
 
@@ -31,7 +34,8 @@ type View =
   | "parent"
   | "accessibility"
   | "qr"
-  | "secret";
+  | "secret"
+  | "garden";
 type Skill = "memory" | "math" | "language" | "culture" | "logic";
 
 type GameResult = {
@@ -222,17 +226,35 @@ function App() {
         )}
         {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
         {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
+        {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
         {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
         {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
         {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
         {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-        {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} onAlbum={() => setView("album")} />}
+        {profile && view === "result" && result && (
+          <ResultScreen
+            result={result}
+            onMap={() => setView("map")}
+            onRewards={() => setView("rewards")}
+            onAlbum={() => setView("album")}
+            onGarden={() => setView("garden")}
+          />
+        )}
         {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
         {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
         {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
-        {profile && view === "parent" && <ParentDashboard profile={profile} onAlbum={() => setView("album")} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
+        {profile && view === "parent" && (
+          <ParentDashboard
+            profile={profile}
+            onAlbum={() => setView("album")}
+            onGarden={() => setView("garden")}
+            onSettings={() => setView("accessibility")}
+            onQr={() => setView("qr")}
+            onReset={resetProgress}
+          />
+        )}
         {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
         {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} />}
         {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
@@ -375,12 +397,67 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             </button>
           </div>
           <div className="cta-row">
+            <button onClick={() => onGo("garden")}>🌱 Skill Garden</button>
             <button onClick={() => onGo("album")}>📔 Sticker Album</button>
             <button onClick={() => onGo("qr")}>📦 Package Collection</button>
             <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
           </div>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function SkillGarden({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
+  const sp = profile.skillProgress;
+  const total = totalSkillProgress(sp);
+  const gardenSticker = profile.unlockedStickers.includes("sticker-skill-garden");
+  return (
+    <section className="screen skill-garden-screen">
+      <p className="eyebrow">My Skill Garden</p>
+      <h2>Watch your skills grow 🌱</h2>
+      <p className="lead">Each quest waters a different plant. Play games, open the daily chest, and scan packages to help them grow!</p>
+      <div className="skill-garden-total">
+        <strong>Total learning points: {total}</strong>
+        <small>
+          {gardenSticker
+            ? "You earned the Skill Garden sticker — check your album!"
+            : `${Math.max(0, 100 - total)} more points until the Skill Garden sticker unlocks.`}
+        </small>
+        <div className="skill-bar large" role="progressbar" aria-valuenow={Math.min(100, total)} aria-valuemin={0} aria-valuemax={100}>
+          <span style={{ width: `${Math.min(100, total)}%` }} />
+        </div>
+        <p className="skill-garden-caption">Points add up from Memory, Math, Kazakh Words, and Culture (each skill can grow up to 100%).</p>
+      </div>
+      <div className="skill-garden-grid">
+        {SKILL_GARDEN.map((entry) => {
+          const value = sp[entry.skill];
+          return (
+            <article key={entry.skill} className="skill-plant-card">
+              <div className="skill-plant-top">
+                <span className="skill-plant-icon">{entry.visual}</span>
+                <div>
+                  <h3>{entry.label}</h3>
+                  <p className="skill-stage">{getGrowthStage(value)}</p>
+                </div>
+              </div>
+              <p className="skill-plant-desc">{entry.description}</p>
+              <div className="skill-bar" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
+                <span style={{ width: `${value}%` }} />
+              </div>
+              <p className="skill-percent">{value}%</p>
+            </article>
+          );
+        })}
+      </div>
+      {gardenSticker && (
+        <div className="garden-unlocked-banner">
+          🌱 <strong>Skill Garden sticker</strong> is waiting in your sticker album.
+        </div>
+      )}
+      <button className="primary" onClick={onBack}>
+        ← Back to Map
+      </button>
     </section>
   );
 }
@@ -676,11 +753,13 @@ function ResultScreen({
   onMap,
   onRewards,
   onAlbum,
+  onGarden,
 }: {
   result: GameResult;
   onMap: () => void;
   onRewards: () => void;
   onAlbum: () => void;
+  onGarden: () => void;
 }) {
   const great = result.score >= 80;
   return (
@@ -704,6 +783,7 @@ function ResultScreen({
       {result.badge && <p className="badge">🏅 Badge: {result.badge}</p>}
       <div className="cta-row">
         <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
+        <button onClick={onGarden}>Skill Garden 🌱</button>
         <button onClick={onRewards}>Rewards 🎁</button>
         <button onClick={onAlbum}>Sticker Album 📔</button>
       </div>
@@ -812,18 +892,21 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
 function ParentDashboard({
   profile,
   onAlbum,
+  onGarden,
   onSettings,
   onQr,
   onReset,
 }: {
   profile: UserProfile;
   onAlbum: () => void;
+  onGarden: () => void;
   onSettings: () => void;
   onQr: () => void;
   onReset: () => void;
 }) {
   const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
   const [confirmReset, setConfirmReset] = useState(false);
+  const sp = profile.skillProgress;
   return (
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
@@ -841,6 +924,11 @@ function ParentDashboard({
         <p>{skills.length ? Array.from(new Set(skills)).join(", ") : "Start a quest to train skills"}</p>
         <strong>Badges</strong>
         <p>{profile.badges.length ? profile.badges.join(", ") : "No badges yet"}</p>
+        <strong>Skill garden (estimated growth)</strong>
+        <p>
+          Memory: {sp.memory}% · Math: {sp.math}% · Kazakh words: {sp.language}% · Culture: {sp.culture}%
+        </p>
+        <button onClick={onGarden}>Open Skill Garden 🌱</button>
         <strong>Sticker album</strong>
         <p>{profile.unlockedStickers.length}/{STICKERS.length} stickers collected</p>
         <button onClick={onAlbum}>Open Sticker Album</button>
