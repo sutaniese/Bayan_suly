@@ -385,6 +385,8 @@ The MVP is complete when:
 
 ## Demo Script
 
+For an accessibility-personalization-focused demo, see `DEMO_ACCESSIBILITY.md`.
+
 1. Open the app.
 2. Bota welcomes the child.
 3. Enter name and age.
