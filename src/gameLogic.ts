@@ -3,6 +3,13 @@ export type Language = "ru" | "kz";
 
 export type SupportNeed = "vision" | "hearing" | "motor" | "focus" | "standard";
 
+/** Per-game instruction copy for accessibility (Phase 7). */
+export type AdaptiveInstruction = {
+  default: string;
+  simple: string;
+  audioText: string;
+};
+
 export type AccessibilitySettings = {
   enabled: boolean;
 

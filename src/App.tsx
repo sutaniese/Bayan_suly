@@ -23,7 +23,16 @@ import {
   skillPracticeSummaryForGame,
   totalSkillProgress,
 } from "./gameLogic";
-import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, SupportNeed, UserProfile } from "./gameLogic";
+import type {
+  AccessibilitySettings,
+  AdaptiveInstruction,
+  Age,
+  Language,
+  LearningSession,
+  QrItem,
+  SupportNeed,
+  UserProfile,
+} from "./gameLogic";
 import { cancelOpenAiPlayback, tryPlayOpenAiSpeech } from "./openaiTts";
 
 type VoiceCommand =
@@ -156,6 +165,36 @@ const cultureQuestions = [
   { prompt: "Which city is known for mountains nearby?", answer: "Almaty", options: ["Shymkent", "Almaty", "Karaganda"], fact: "Almaty sits near the Ile Alatau mountains." },
   { prompt: "Which city is linked with the Mausoleum of Khoja Ahmed Yasawi?", answer: "Turkestan", options: ["Turkestan", "Astana", "Atyrau"], fact: "Turkestan is one of Kazakhstan's historic cultural centers." },
 ];
+
+const MEMORY_INSTRUCTION: AdaptiveInstruction = {
+  default: "Flip two cards and find every matching pair.",
+  simple: "Tap two cards. If they match, they stay open.",
+  audioText: "Flip two cards at a time and find every matching pair of sweets.",
+};
+
+const WORDS_INSTRUCTION: AdaptiveInstruction = {
+  default: "Choose the Kazakh word that matches the picture.",
+  simple: "Find the word for this picture.",
+  audioText: "Look at the picture and choose the correct Kazakh word.",
+};
+
+const MATH_INSTRUCTION: AdaptiveInstruction = {
+  default: "Pick the correct answer.",
+  simple: "Choose the right answer for the question.",
+  audioText: "Read the question and pick the correct answer.",
+};
+
+const PATTERN_INSTRUCTION: AdaptiveInstruction = {
+  default: "Find what comes next in the pattern.",
+  simple: "What comes next in the pattern?",
+  audioText: "Look at the pattern and choose what comes next.",
+};
+
+const CULTURE_INSTRUCTION: AdaptiveInstruction = {
+  default: "Match Kazakhstan places with the right fact.",
+  simple: "Pick the right city for the clue.",
+  audioText: "Read the clue and choose the matching place in Kazakhstan.",
+};
 
 function loadProfile(): UserProfile | null {
   try {
@@ -1092,7 +1131,7 @@ function MemoryGame({
   return (
     <GameShell
       title="Collect the Sweets"
-      hint="Flip two cards and find every matching pair."
+      instruction={MEMORY_INSTRUCTION}
       accessibility={accessibility}
       onSpeak={onSpeak}
       onRegisterInstruction={onRegisterInstruction}
@@ -1141,7 +1180,7 @@ function WordsGame({
   return (
     <GameShell
       title="Find the Kazakh Word"
-      hint="Choose the Kazakh word that matches the picture."
+      instruction={WORDS_INSTRUCTION}
       accessibility={accessibility}
       onSpeak={onSpeak}
       onRegisterInstruction={onRegisterInstruction}
@@ -1186,7 +1225,7 @@ function MathGame({
   };
 
   return (
-    <GameShell title="Counting with Bota" hint="Pick the correct answer." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title="Counting with Bota" instruction={MATH_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="question-card"><h3>{question.prompt}</h3></div>
       {accessibility.gestureAnswerMode && (
         <div className="gesture-box">
@@ -1235,7 +1274,7 @@ function PatternGame({
   };
 
   return (
-    <GameShell title="Pattern Caravan" hint="Find what comes next in the pattern." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title="Pattern Caravan" instruction={PATTERN_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
       <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
       {feedback && <p className="feedback">{feedback}</p>}
@@ -1274,7 +1313,7 @@ function CultureGame({
   };
 
   return (
-    <GameShell title="Culture Match" hint="Match Kazakhstan places with the right fact." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title="Culture Match" instruction={CULTURE_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="question-card culture-card">
         <div className="big-icon">🧭</div>
         <h3>{question.prompt}</h3>
@@ -1287,22 +1326,33 @@ function CultureGame({
 
 function GameShell({
   title,
-  hint,
+  instruction,
   accessibility,
   onSpeak,
   onRegisterInstruction,
   children,
 }: {
   title: string;
-  hint: string;
+  instruction: AdaptiveInstruction;
   accessibility: AccessibilitySettings;
   onSpeak: (text: string) => void;
   onRegisterInstruction?: (info: { title: string; hint: string }) => void;
   children: React.ReactNode;
 }) {
+  const [explainSimpler, setExplainSimpler] = useState(false);
+  const showingSimple = accessibility.simplifiedInstructions || explainSimpler;
+  const displayed = showingSimple ? instruction.simple : instruction.default;
+
   useEffect(() => {
-    onRegisterInstruction?.({ title, hint });
-  }, [title, hint, onRegisterInstruction]);
+    onRegisterInstruction?.({ title, hint: displayed });
+  }, [title, displayed, onRegisterInstruction]);
+
+  const handleExplainSimpler = () => {
+    setExplainSimpler(true);
+    if (accessibility.voiceInstructions) {
+      onSpeak(instruction.simple);
+    }
+  };
 
   return (
     <section className="screen">
@@ -1310,10 +1360,19 @@ function GameShell({
       <h2>{title}</h2>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
-        <p>{hint}</p>
+        <p>{displayed}</p>
+      </div>
+      <div className="instruction-toolbar">
+        {accessibility.voiceInstructions && (
+          <button type="button" onClick={() => onSpeak(instruction.audioText)}>
+            🔊 Read aloud
+          </button>
+        )}
+        <button type="button" className="instruction-explain" onClick={handleExplainSimpler}>
+          Explain simpler
+        </button>
       </div>
       {accessibility.textHints && <p className="hint">Take your time! There's no rush. Audio is optional.</p>}
-      {accessibility.voiceInstructions && <button onClick={() => onSpeak(hint)}>🔊 Read aloud</button>}
       {accessibility.noTimer && <p className="status">No timer — go at your own pace!</p>}
       {children}
     </section>
@@ -1664,6 +1723,7 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
     ["textHints", "Text Hints"],
     ["voiceInstructions", "Voice Instructions"],
     ["botaVoiceGuide", "Bota Voice Guide"],
+    ["simplifiedInstructions", "Simpler instructions"],
     ["noTimer", "No Timer"],
     ["reducedAnimations", "Reduced Animations"],
     ["gestureAnswerMode", "Gesture Answer Mode"],

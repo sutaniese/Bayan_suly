@@ -511,6 +511,21 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .bota-bubble p { color: var(--text-main); font-weight: 700; line-height: 1.45; font-size: 0.92rem; }
 .bota-bubble strong { color: var(--accent-green-deep); }
 
+.instruction-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+.instruction-toolbar > button {
+  min-height: 48px;
+}
+.instruction-explain {
+  background: #E3F2FD;
+  border: 2px solid rgba(66, 165, 245, 0.35);
+  font-weight: 800;
+}
+
 .guide-card {
   display: flex;
   align-items: center;
@@ -1638,6 +1653,12 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   color: var(--accent-yellow);
 }
 .high-contrast .voice-guide-fab {
+  border-color: #fff;
+}
+
+.high-contrast .instruction-explain {
+  background: #111;
+  color: #fff;
   border-color: #fff;
 }
 
