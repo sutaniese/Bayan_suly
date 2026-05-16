@@ -262,6 +262,56 @@ npm run build
 npm run preview
 ```
 
+## Groq Voice Agent
+
+The app now supports a server-backed voice flow for:
+
+- microphone transcription via Groq ASR
+- AI command resolution via Groq LLM
+- secure server-side TTS proxy with browser speech fallback
+
+### Environment variables
+
+Set these in your local `.env.local` and in Vercel project settings:
+
+```bash
+GROQ_API_KEY=your_secret_key
+GROQ_ASR_MODEL=whisper-large-v3-turbo
+GROQ_CHAT_MODEL=llama-3.1-8b-instant
+GROQ_TTS_MODEL=canopylabs/orpheus-v1-english
+GROQ_TTS_VOICE=hannah
+GROQ_TTS_FORMAT=wav
+```
+
+Do not use `VITE_` prefixes for Groq secrets. The client now talks only to serverless routes under `/api/voice/*`.
+
+### How to try voice control
+
+1. Start the app with `npm run dev`.
+2. Open Parent Mode with PIN `1234`.
+3. Open `Learning Comfort Profile`.
+4. Turn on `Voice Navigation`.
+5. Optionally turn on `Voice Instructions` and `Bota Voice Guide`.
+6. Return to the child screens, open the `🐫` guide, and press `Start listening`.
+
+Example commands:
+
+- `open map`
+- `open rewards`
+- `open memory game`
+- `show coins`
+- `repeat instruction`
+- `read this screen`
+- `открой карту`
+- `награды`
+- `повтори инструкцию`
+
+### Browser notes
+
+- Microphone access requires HTTPS or localhost.
+- If Groq TTS is unavailable for the current language, the app falls back to browser `speechSynthesis`.
+- If the LLM cannot map a command cleanly, the app falls back to a local deterministic matcher for core commands.
+
 ## Data Models
 
 ```ts

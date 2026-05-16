@@ -40,43 +40,9 @@ import type {
   SupportNeed,
   UserProfile,
 } from "./gameLogic";
-import { cancelGroqPlayback, tryPlayGroqSpeech } from "./groqTts";
 import { GentleNotice, QuestAnswerFeedback, RewardEarnedBanner } from "./multimodalFeedback";
-
-type SpeechRecognitionAlternative = { transcript?: string };
-type SpeechRecognitionResultLike = ArrayLike<SpeechRecognitionAlternative>;
-type SpeechRecognitionEventLike = { results: ArrayLike<SpeechRecognitionResultLike> };
-type SpeechRecognitionErrorEventLike = { error?: string };
-type BrowserSpeechRecognition = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-};
-type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition;
-
-type VoiceCommand =
-  | "open_map"
-  | "open_memory_game"
-  | "open_words_game"
-  | "open_math_game"
-  | "open_patterns_game"
-  | "open_culture_game"
-  | "open_rewards"
-  | "open_album"
-  | "open_garden"
-  | "open_qr"
-  | "open_daily_chest"
-  | "repeat_instruction"
-  | "show_coins"
-  | "open_parent_mode"
-  | "enable_large_text";
+import { cancelVoicePlayback, resolveVoiceCommand, speakText, transcribeAudio } from "./voiceAgent";
+import type { VoiceAgentContext, VoiceCommand } from "../shared/voice";
 
 type View =
   | "onboarding"
@@ -138,61 +104,6 @@ type Reward = {
   discount?: string;
 };
 
-function getSpeechRecognitionCtor(): BrowserSpeechRecognitionCtor | null {
-  const speechWindow = window as Window & {
-    SpeechRecognition?: BrowserSpeechRecognitionCtor;
-    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
-  };
-  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
-}
-
-function normalizeVoiceTranscript(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function matchVoiceCommand(rawTranscript: string): VoiceCommand | null {
-  const text = normalizeVoiceTranscript(rawTranscript);
-  const hasAny = (...phrases: string[]) => phrases.some((phrase) => text.includes(phrase));
-
-  if (hasAny("open map", "map", "карта", "открой карту", "аш картаны", "картаны аш")) return "open_map";
-  if (hasAny("open memory", "memory game", "almaty", "алматы", "ойын память", "жад ойыны")) return "open_memory_game";
-  if (hasAny("open word", "word game", "turkestan", "туркестан", "түркістан", "слова", "сөз ойыны")) return "open_words_game";
-  if (hasAny("open math", "math game", "astana", "астана", "математика", "санау ойыны")) return "open_math_game";
-  if (hasAny("open pattern", "pattern game", "karaganda", "караганда", "қарағанды", "узор", "pattern")) return "open_patterns_game";
-  if (hasAny("open culture", "culture game", "shymkent", "шимкент", "шымкент", "culture match", "мәдениет")) return "open_culture_game";
-  if (hasAny("open rewards", "rewards", "награды", "сыйлық", "сыйлықтар")) return "open_rewards";
-  if (hasAny("open album", "album", "альбом", "жинақ")) return "open_album";
-  if (hasAny("open garden", "garden", "сад", "бақ", "skill garden")) return "open_garden";
-  if (hasAny("open qr", "scan package", "qr", "куар", "скан", "пакет")) return "open_qr";
-  if (hasAny("open chest", "daily chest", "сундук", "сандық")) return "open_daily_chest";
-  if (hasAny("repeat", "repeat instruction", "повтори", "повтори инструкцию", "қайтала", "нұсқауды қайтала")) return "repeat_instruction";
-  if (hasAny("coins", "how many coins", "монеты", "сколько монет", "тиын", "coin")) return "show_coins";
-  if (hasAny("parent", "call parent", "родитель", "родительский режим", "ата ана", "ата ана режимі")) return "open_parent_mode";
-  if (hasAny("large text", "turn on large text", "крупный текст", "үлкен мәтін")) return "enable_large_text";
-
-  return null;
-}
-
-function voiceRecognitionErrorMessage(error?: string): string {
-  switch (error) {
-    case "not-allowed":
-    case "service-not-allowed":
-      return "Microphone permission is blocked.";
-    case "audio-capture":
-      return "No microphone was found.";
-    case "network":
-      return "Voice recognition had a network problem.";
-    case "no-speech":
-      return "I did not hear anything. Please try again.";
-    default:
-      return "Voice recognition could not understand that.";
-  }
-}
-
 const locations: Location[] = [
   // City coordinates use real-world lat/lon (GeoNames/OSM-level precision) and are projected into the map.
   { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", lat: 51.1694, lon: 71.4491 },
@@ -236,6 +147,79 @@ function getLocationPositionPct(location: Location): { left: string; top: string
   const y = KZ_DRAW_AREA.yMin + latPct * (KZ_DRAW_AREA.yMax - KZ_DRAW_AREA.yMin);
 
   return { left: `${x}%`, top: `${y}%` };
+}
+
+const GLOBAL_VOICE_COMMANDS: VoiceCommand[] = [
+  "open_map",
+  "open_rewards",
+  "open_album",
+  "open_garden",
+  "open_qr",
+  "open_daily_chest",
+  "repeat_instruction",
+  "read_current_screen",
+  "show_coins",
+  "open_parent_mode",
+  "enable_large_text",
+];
+
+function getAllowedVoiceCommands(view: View): VoiceCommand[] {
+  if (view === "map") {
+    return [
+      ...GLOBAL_VOICE_COMMANDS,
+      "open_memory_game",
+      "open_words_game",
+      "open_math_game",
+      "open_patterns_game",
+      "open_culture_game",
+    ];
+  }
+  return GLOBAL_VOICE_COMMANDS;
+}
+
+function buildVoiceScreenSummary(
+  profile: UserProfile,
+  view: View,
+  lastInstruction: { title: string; hint: string },
+  result: GameResult | null,
+): string {
+  const completedCount = locations.filter((location) => location.gameId && profile.completedGames.includes(location.gameId)).length;
+  const nextQuest = locations.find((location) => location.gameId && !profile.completedGames.includes(location.gameId));
+  const today = getToday();
+  const chestOpened = profile.openedDailyChestDates.includes(today);
+
+  switch (view) {
+    case "map":
+      return nextQuest
+        ? `You are on the Kazakhstan quest map. ${completedCount} of ${CORE_LOCATION_IDS.length} city quests are complete. The next suggested quest is ${nextQuest.city}: ${nextQuest.title}.`
+        : `You are on the Kazakhstan quest map. All ${CORE_LOCATION_IDS.length} city quests are complete.`;
+    case "memory":
+    case "words":
+    case "math":
+    case "patterns":
+    case "culture":
+      return lastInstruction.hint
+        ? `${lastInstruction.title}. ${lastInstruction.hint}`
+        : "You are in a learning game. Ask me to repeat the instruction.";
+    case "rewards":
+      return `You are in the rewards shop. You have ${profile.coins} Bota Coins and can unlock badges or coupons.`;
+    case "album":
+      return `You are in the sticker album. You have unlocked ${profile.unlockedStickers.length} stickers so far.`;
+    case "garden":
+      return `You are in the skill garden. Your total learning points are ${totalSkillProgress(profile.skillProgress)}.`;
+    case "qr":
+      return `You are in package collection. You can simulate scanning Bota packages to unlock rewards.`;
+    case "daily-chest":
+      return chestOpened
+        ? "You are on the daily chest screen. Today's chest was already opened."
+        : `You are on the daily chest screen. Opening the chest gives ${DAILY_CHEST_REWARD.coins} coins and a Kazakhstan fact.`;
+    case "result":
+      return result
+        ? `You finished ${result.title} with score ${result.score} and earned ${result.coinsEarned} Bota Coins.`
+        : "You are on the result screen.";
+    default:
+      return "You are in Bota Quest.";
+  }
 }
 
 const rewards: Reward[] = [
@@ -410,9 +394,8 @@ function App() {
 
   const speak = useCallback(
     (text: string) => {
-      const groqKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
       const runBrowser = () => {
-        cancelGroqPlayback();
+        cancelVoicePlayback();
         if (!("speechSynthesis" in window)) return;
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
@@ -420,13 +403,12 @@ function App() {
         utterance.lang = lang;
         window.speechSynthesis.speak(utterance);
       };
-      if (groqKey) {
-        void tryPlayGroqSpeech(text, groqKey, profile?.language ?? "ru").then((ok) => {
+
+      void speakText(text, profile?.language ?? "ru")
+        .then((ok) => {
           if (!ok) runBrowser();
-        });
-        return;
-      }
-      runBrowser();
+        })
+        .catch(() => runBrowser());
     },
     [profile?.language],
   );
@@ -439,6 +421,18 @@ function App() {
       view === "rewards" ||
       view === "qr" ||
       view === "daily-chest");
+  const voiceContext = useMemo<VoiceAgentContext | null>(() => {
+    if (!profile) return null;
+    return {
+      view,
+      language: profile.language,
+      coins: profile.coins,
+      screenSummary: buildVoiceScreenSummary(profile, view, gameInstructionRef.current, result),
+      instructionTitle: gameInstructionRef.current.title,
+      instructionHint: gameInstructionRef.current.hint,
+      allowedCommands: getAllowedVoiceCommands(view),
+    };
+  }, [profile, view, result]);
 
   return (
     <main className={className}>
@@ -538,6 +532,7 @@ function App() {
             view={view}
             showChildHub={showChildHub}
             lastInstructionRef={gameInstructionRef}
+            voiceContext={voiceContext}
             speak={speak}
             setView={setView}
             setProfile={setProfile}
@@ -553,6 +548,7 @@ function BotaVoiceGuide({
   view,
   showChildHub,
   lastInstructionRef,
+  voiceContext,
   speak,
   setView,
   setProfile,
@@ -561,6 +557,7 @@ function BotaVoiceGuide({
   view: View;
   showChildHub: boolean;
   lastInstructionRef: React.MutableRefObject<{ title: string; hint: string }>;
+  voiceContext: VoiceAgentContext | null;
   speak: (text: string) => void;
   setView: (v: View) => void;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
@@ -569,7 +566,11 @@ function BotaVoiceGuide({
   const [coinFlash, setCoinFlash] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [listenStatus, setListenStatus] = useState<string | null>(null);
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordingTimeoutRef = useRef<number | null>(null);
+  const ignoreRecordingRef = useRef(false);
   const settings = profile.adaptiveProfile.settings;
   const enabled = settings.botaVoiceGuide || settings.voiceInstructions || settings.voiceNavigation;
   const hidden =
@@ -579,15 +580,36 @@ function BotaVoiceGuide({
     view === "parent" ||
     view === "accessibility";
 
-  const stopListening = () => {
-    recognitionRef.current?.abort();
-    recognitionRef.current = null;
+  const cleanupRecordingResources = () => {
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+  };
+
+  const stopListening = (ignore = false) => {
+    ignoreRecordingRef.current = ignore;
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    } else {
+      cleanupRecordingResources();
+    }
     setIsListening(false);
   };
 
   useEffect(() => {
-    if (!enabled || hidden) stopListening();
-    return () => recognitionRef.current?.abort();
+    if (!enabled || hidden) stopListening(true);
+    return () => stopListening(true);
   }, [enabled, hidden]);
 
   if (!enabled || hidden) return null;
@@ -596,7 +618,7 @@ function BotaVoiceGuide({
     if (settings.voiceInstructions) speak(phrase);
   };
 
-  const run = (cmd: VoiceCommand) => {
+  const run = (cmd: VoiceCommand, options?: { closePanel?: boolean }) => {
     switch (cmd) {
       case "open_map":
         setView("map");
@@ -648,6 +670,9 @@ function BotaVoiceGuide({
         speak(line);
         break;
       }
+      case "read_current_screen":
+        if (voiceContext?.screenSummary) speak(voiceContext.screenSummary);
+        break;
       case "show_coins": {
         const n = profile.coins;
         speak(`You have ${n} Bota Coins.`);
@@ -662,11 +687,13 @@ function BotaVoiceGuide({
       case "enable_large_text":
         setProfile((p) => {
           if (!p) return p;
+          const nextSettings = { ...p.adaptiveProfile.settings, largeText: true };
           return {
             ...p,
             adaptiveProfile: {
               ...p.adaptiveProfile,
-              settings: { ...p.adaptiveProfile.settings, largeText: true },
+              settings: nextSettings,
+              recommendationSummary: buildRecommendationSummary(p.adaptiveProfile.supportNeeds, nextSettings),
             },
           };
         });
@@ -675,83 +702,118 @@ function BotaVoiceGuide({
       default:
         break;
     }
-    setOpen(false);
+    if (options?.closePanel !== false) setOpen(false);
   };
 
   const startListening = () => {
-    const RecognitionCtor = getSpeechRecognitionCtor();
-    if (!RecognitionCtor) {
-      const line = "Voice control is not supported in this browser.";
+    if (!settings.voiceNavigation) return;
+    if (!voiceContext) {
+      setListenStatus("Voice context is not ready yet.");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      const line = "Microphone recording is not supported in this browser.";
       setListenStatus(line);
       confirmIfVoice(line);
       return;
     }
 
     if (isListening) {
-      stopListening();
-      setListenStatus("Stopped listening.");
+      setListenStatus("Processing your voice...");
+      stopListening(false);
       return;
     }
 
-    try {
-      cancelGroqPlayback();
-      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    void (async () => {
+      try {
+        cancelVoicePlayback();
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
-      const recognition = new RecognitionCtor();
-      recognition.lang = profile.language === "kz" ? "kk-KZ" : "ru-RU";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognitionRef.current = recognition;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
 
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0]?.transcript ?? "")
-          .join(" ")
-          .trim();
-        setIsListening(false);
-        recognitionRef.current = null;
-        if (!transcript) {
-          setListenStatus("I did not hear a command.");
-          return;
-        }
+        const preferredMimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+        const mimeType =
+          preferredMimeTypes.find((type) => typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported(type)) || "";
+        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
 
-        const cmd = matchVoiceCommand(transcript);
-        if (!cmd) {
-          const line = `I heard "${transcript}", but I don't know that command yet.`;
+        ignoreRecordingRef.current = false;
+        recordedChunksRef.current = [];
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+        };
+
+        recorder.onerror = () => {
+          cleanupRecordingResources();
+          setIsListening(false);
+          const line = "Voice recording failed. Please try again.";
           setListenStatus(line);
           confirmIfVoice(line);
-          return;
-        }
+        };
 
-        setListenStatus(`Heard: ${transcript}`);
-        run(cmd);
-      };
+        recorder.onstop = () => {
+          const ignore = ignoreRecordingRef.current;
+          const recordedParts = recordedChunksRef.current;
+          ignoreRecordingRef.current = false;
+          recordedChunksRef.current = [];
+          const finalMimeType = recorder.mimeType || mimeType || "audio/webm";
+          cleanupRecordingResources();
+          if (ignore) return;
 
-      recognition.onerror = (event) => {
-        recognitionRef.current = null;
+          const blob = new Blob(recordedParts, { type: finalMimeType });
+          if (blob.size === 0) {
+            setListenStatus("I did not hear anything. Please try again.");
+            return;
+          }
+
+          setListenStatus("Transcribing your voice...");
+          void (async () => {
+            try {
+              const { transcript } = await transcribeAudio(blob, profile.language);
+              if (!transcript) {
+                setListenStatus("I did not hear a clear command.");
+                return;
+              }
+
+              const resolution = await resolveVoiceCommand(transcript, voiceContext);
+              if (!resolution.action) {
+                setListenStatus(resolution.replyText);
+                confirmIfVoice(resolution.replyText);
+                return;
+              }
+
+              setListenStatus(`Heard: ${transcript}`);
+              run(resolution.action);
+            } catch (error) {
+              const line = error instanceof Error ? error.message : "Voice control could not process that.";
+              setListenStatus(line);
+              confirmIfVoice(line);
+            }
+          })();
+        };
+
+        setOpen(true);
+        setIsListening(true);
+        setListenStatus("Listening for a command...");
+        recorder.start();
+        recordingTimeoutRef.current = window.setTimeout(() => {
+          setListenStatus("Processing your voice...");
+          stopListening(false);
+        }, 4500);
+      } catch (error) {
+        cleanupRecordingResources();
         setIsListening(false);
-        const line = voiceRecognitionErrorMessage(event.error);
+        const line =
+          error instanceof DOMException && error.name === "NotAllowedError"
+            ? "Microphone permission is blocked."
+            : "Voice control could not start.";
         setListenStatus(line);
         confirmIfVoice(line);
-      };
-
-      recognition.onend = () => {
-        if (recognitionRef.current === recognition) recognitionRef.current = null;
-        setIsListening(false);
-      };
-
-      setOpen(true);
-      setIsListening(true);
-      setListenStatus("Listening for a command...");
-      recognition.start();
-    } catch {
-      setIsListening(false);
-      recognitionRef.current = null;
-      const line = "Voice control could not start.";
-      setListenStatus(line);
-      confirmIfVoice(line);
-    }
+      }
+    })();
   };
 
   const chips: { cmd: VoiceCommand; label: string }[] = [
@@ -767,6 +829,7 @@ function BotaVoiceGuide({
     { cmd: "open_qr", label: "Open QR" },
     { cmd: "open_daily_chest", label: "Open chest" },
     { cmd: "repeat_instruction", label: "Repeat instruction" },
+    { cmd: "read_current_screen", label: "Read this screen" },
     { cmd: "show_coins", label: "How many coins?" },
     { cmd: "open_parent_mode", label: "Call parent" },
     { cmd: "enable_large_text", label: "Turn on large text" },
