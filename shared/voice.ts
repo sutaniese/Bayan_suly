@@ -12,6 +12,7 @@ export type VoiceCommand =
   | "open_daily_chest"
   | "open_daily_tasks"
   | "open_photo_frame"
+  | "open_leaderboard"
   | "repeat_instruction"
   | "read_current_screen"
   | "show_coins"
@@ -20,7 +21,7 @@ export type VoiceCommand =
 
 export type VoiceAgentContext = {
   view: string;
-  language: "ru" | "kz";
+  language: "ru" | "kz" | "en";
   coins: number;
   screenSummary: string;
   instructionTitle: string;
@@ -60,6 +61,7 @@ export function matchVoiceCommand(rawTranscript: string): VoiceCommand | null {
   if (hasAny("open chest", "daily chest", "сундук", "сандық")) return "open_daily_chest";
   if (hasAny("daily task", "задани", "тапсырма", "ежедневн")) return "open_daily_tasks";
   if (hasAny("photo frame", "фото", "рамка", "фото бота", "ботамен фото")) return "open_photo_frame";
+  if (hasAny("leaderboard", "лидер", "көшбасшы", "рейтинг", "таблица лидеров")) return "open_leaderboard";
   if (hasAny("repeat", "repeat instruction", "повтори", "повтори инструкцию", "қайтала", "нұсқауды қайтала")) return "repeat_instruction";
   if (hasAny("read screen", "read this", "what is on screen", "прочитай экран", "что на экране", "экранды оқы", "не көріп тұрмын")) return "read_current_screen";
   if (hasAny("coins", "how many coins", "монеты", "сколько монет", "тиын", "coin")) return "show_coins";

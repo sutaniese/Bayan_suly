@@ -1,5 +1,5 @@
 export type Age = 7 | 8 | 9 | 10 | 11;
-export type Language = "ru" | "kz";
+export type Language = "ru" | "kz" | "en";
 
 export type SupportNeed = "vision" | "hearing" | "motor" | "focus" | "standard";
 
@@ -92,7 +92,7 @@ export type DailyTaskType = "play_game" | "earn_coins" | "open_chest" | "collect
 export type DailyTask = {
   id: string;
   type: DailyTaskType;
-  label: { ru: string; kz: string };
+  label: { ru: string; kz: string; en: string };
   target: number;
   progress: number;
   rewardCoins: number;
@@ -869,13 +869,13 @@ function adaptMathQuestionRow(seed: MathQuestionSeed, settings?: AccessibilitySe
 
 // ──── Daily tasks & streak system ────
 
-const DAILY_TASK_POOL: Array<{ type: DailyTaskType; label: { ru: string; kz: string }; target: number; reward: number }> = [
-  { type: "play_game", label: { ru: "Пройди 1 игру", kz: "1 ойын ойна" }, target: 1, reward: 5 },
-  { type: "play_game", label: { ru: "Пройди 2 игры", kz: "2 ойын ойна" }, target: 2, reward: 10 },
-  { type: "earn_coins", label: { ru: "Заработай 10 монет", kz: "10 тиын жина" }, target: 10, reward: 5 },
-  { type: "earn_coins", label: { ru: "Заработай 20 монет", kz: "20 тиын жина" }, target: 20, reward: 10 },
-  { type: "open_chest", label: { ru: "Открой сундук", kz: "Сандықты аш" }, target: 1, reward: 5 },
-  { type: "collect_sticker", label: { ru: "Получи стикер", kz: "Стикер жина" }, target: 1, reward: 5 },
+const DAILY_TASK_POOL: Array<{ type: DailyTaskType; label: { ru: string; kz: string; en: string }; target: number; reward: number }> = [
+  { type: "play_game", label: { ru: "Пройди 1 игру", kz: "1 ойын ойна", en: "Play 1 game" }, target: 1, reward: 5 },
+  { type: "play_game", label: { ru: "Пройди 2 игры", kz: "2 ойын ойна", en: "Play 2 games" }, target: 2, reward: 10 },
+  { type: "earn_coins", label: { ru: "Заработай 10 монет", kz: "10 тиын жина", en: "Earn 10 coins" }, target: 10, reward: 5 },
+  { type: "earn_coins", label: { ru: "Заработай 20 монет", kz: "20 тиын жина", en: "Earn 20 coins" }, target: 20, reward: 10 },
+  { type: "open_chest", label: { ru: "Открой сундук", kz: "Сандықты аш", en: "Open chest" }, target: 1, reward: 5 },
+  { type: "collect_sticker", label: { ru: "Получи стикер", kz: "Стикер жина", en: "Collect a sticker" }, target: 1, reward: 5 },
 ];
 
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -977,44 +977,175 @@ export function checkDailyTaskProgress(profile: UserProfile, event: DailyTaskEve
 }
 
 export const STREAK_MILESTONES = [
-  { days: 3, coins: 5, label: { ru: "3 дня подряд: +5 монет", kz: "3 күн қатарынан: +5 тиын" } },
-  { days: 7, coins: 15, label: { ru: "7 дней подряд: +15 монет", kz: "7 күн қатарынан: +15 тиын" } },
-  { days: 30, coins: 50, label: { ru: "30 дней: +50 монет + значок", kz: "30 күн: +50 тиын + белгі" } },
+  { days: 3, coins: 5, label: { ru: "3 дня подряд: +5 монет", kz: "3 күн қатарынан: +5 тиын", en: "3-day streak: +5 coins" } },
+  { days: 7, coins: 15, label: { ru: "7 дней подряд: +15 монет", kz: "7 күн қатарынан: +15 тиын", en: "7-day streak: +15 coins" } },
+  { days: 30, coins: 50, label: { ru: "30 дней: +50 монет + значок", kz: "30 күн: +50 тиын + белгі", en: "30 days: +50 coins + badge" } },
 ];
 
-// ──── UI strings (bilingual) ────
+// ──── Leaderboard ────
 
-export const UI_STRINGS: Record<string, { ru: string; kz: string }> = {
-  welcome_map: { ru: "Привет! Выбери город для приключения!", kz: "Сәлем! Қаланы таңда!" },
-  welcome_memory: { ru: "Найди все пары сладостей!", kz: "Барлық тәттілердің жұбын тап!" },
-  welcome_words: { ru: "Выбери казахское слово для картинки!", kz: "Суретке сәйкес қазақ сөзін таңда!" },
-  welcome_math: { ru: "Посчитай с Ботой!", kz: "Ботамен сана!" },
-  welcome_patterns: { ru: "Найди следующий элемент узора!", kz: "Өрнектің келесі элементін тап!" },
-  welcome_culture: { ru: "Узнай больше о Казахстане!", kz: "Қазақстан туралы көбірек біл!" },
-  welcome_daily_chest: { ru: "У тебя есть подарок!", kz: "Сыйлығың бар!" },
-  welcome_rewards: { ru: "Твои награды и купоны!", kz: "Сыйлықтарың мен купондарың!" },
-  welcome_album: { ru: "Твой альбом стикеров!", kz: "Стикер жинағың!" },
-  welcome_garden: { ru: "Смотри как растут твои навыки!", kz: "Дағдыларыңның өсуін қара!" },
-  welcome_qr: { ru: "Сканируй упаковку Бота!", kz: "Бота орамасын сканерле!" },
-  chest_opened: { ru: "Молодец! Вот твоя награда!", kz: "Жарайсың! Міне сыйлығың!" },
-  stuck_hint: { ru: "Нужна помощь? Попробуй нажать на одну из кнопок!", kz: "Көмек керек пе? Батырмалардың бірін бас!" },
-  open_map: { ru: "Карта", kz: "Карта" },
-  open_rewards: { ru: "Награды", kz: "Сыйлық" },
-  open_album: { ru: "Альбом", kz: "Жинақ" },
-  open_garden: { ru: "Сад навыков", kz: "Дағды бағы" },
-  open_qr: { ru: "QR сканер", kz: "QR сканер" },
-  open_chest: { ru: "Сундук", kz: "Сандық" },
-  open_photo_frame: { ru: "Фото с Ботой", kz: "Ботамен фото" },
-  daily_tasks: { ru: "Ежедневные задания", kz: "Күнделікті тапсырмалар" },
-  streak_label: { ru: "дней подряд", kz: "күн қатарынан" },
-  share_whatsapp: { ru: "Отправить в WhatsApp", kz: "WhatsApp-қа жіберу" },
-  download_photo: { ru: "Скачать фото", kz: "Фотоны жүктеу" },
-  scan_camera: { ru: "Сканировать камерой", kz: "Камерамен сканерлеу" },
-  level_unlocked: { ru: "Уровень разблокирован!", kz: "Деңгей ашылды!" },
+export type LeaderboardEntry = {
+  name: string;
+  coins: number;
+  streak: number;
+  badges: number;
+  avatar: string;
+  isPlayer: boolean;
+};
+
+const SIMULATED_PLAYERS: Omit<LeaderboardEntry, "isPlayer">[] = [
+  { name: "Аружан", coins: 220, streak: 12, badges: 4, avatar: "👧" },
+  { name: "Ернар", coins: 185, streak: 7, badges: 3, avatar: "👦" },
+  { name: "Дана", coins: 150, streak: 5, badges: 2, avatar: "👧" },
+  { name: "Алихан", coins: 130, streak: 4, badges: 2, avatar: "👦" },
+  { name: "Мадина", coins: 95, streak: 3, badges: 1, avatar: "👧" },
+  { name: "Тимур", coins: 75, streak: 2, badges: 1, avatar: "👦" },
+  { name: "Айгерім", coins: 60, streak: 1, badges: 1, avatar: "👧" },
+  { name: "Нұрсұлтан", coins: 40, streak: 1, badges: 0, avatar: "👦" },
+  { name: "Камила", coins: 25, streak: 0, badges: 0, avatar: "👧" },
+  { name: "Арман", coins: 10, streak: 0, badges: 0, avatar: "👦" },
+];
+
+export function buildLeaderboard(profile: UserProfile): LeaderboardEntry[] {
+  const player: LeaderboardEntry = {
+    name: profile.name || "You",
+    coins: profile.coins,
+    streak: profile.currentStreak,
+    badges: profile.badges.length,
+    avatar: "🐫",
+    isPlayer: true,
+  };
+  const all: LeaderboardEntry[] = [
+    player,
+    ...SIMULATED_PLAYERS.map((p) => ({ ...p, isPlayer: false })),
+  ];
+  all.sort((a, b) => b.coins - a.coins);
+  return all;
+}
+
+// ──── UI strings (trilingual) ────
+
+type I18n = { ru: string; kz: string; en: string };
+export const UI_STRINGS: Record<string, I18n> = {
+  // ── Landing ──
+  landing_headline: { ru: "Учись играя с Ботой!", kz: "Ботамен ойнай оқы!", en: "Learn by playing with Bota!" },
+  landing_subtitle: { ru: "Образовательное приключение по Казахстану для детей 7-11 лет", kz: "7-11 жас балаларға арналған Қазақстан бойынша білім беру оқиғасы", en: "An educational adventure across Kazakhstan for kids aged 7-11" },
+  landing_start: { ru: "Начать обучение", kz: "Оқуды бастау", en: "Start Learning" },
+  landing_continue: { ru: "Продолжить как", kz: "Жалғастыру:", en: "Continue as" },
+  landing_new: { ru: "Новое приключение", kz: "Жаңа оқиға", en: "New Adventure" },
+  landing_feat_games: { ru: "5 обучающих мини-игр", kz: "5 білім беру ойыны", en: "5 educational mini-games" },
+  landing_feat_voice: { ru: "Голосовой помощник Бота", kz: "Бота дауыс көмекшісі", en: "Bota voice assistant" },
+  landing_feat_rewards: { ru: "Монеты, стикеры и награды", kz: "Тиындар, стикерлер, сыйлықтар", en: "Coins, stickers & rewards" },
+  landing_feat_qr: { ru: "QR-сканер упаковок", kz: "Орама QR-сканері", en: "Package QR scanner" },
+  landing_feat_streak: { ru: "Ежедневные задания и серии", kz: "Күнделікті тапсырмалар", en: "Daily tasks & streaks" },
+  landing_feat_access: { ru: "Адаптивный профиль доступности", kz: "Бейімделген қолжетімділік", en: "Adaptive accessibility" },
+  // ── Welcome / Bota hints ──
+  welcome_map: { ru: "Привет! Выбери город для приключения!", kz: "Сәлем! Қаланы таңда!", en: "Hi! Pick a city for your adventure!" },
+  welcome_memory: { ru: "Найди все пары сладостей!", kz: "Барлық тәттілердің жұбын тап!", en: "Find all the matching sweet pairs!" },
+  welcome_words: { ru: "Выбери казахское слово для картинки!", kz: "Суретке сәйкес қазақ сөзін таңда!", en: "Pick the Kazakh word for the picture!" },
+  welcome_math: { ru: "Посчитай с Ботой!", kz: "Ботамен сана!", en: "Count with Bota!" },
+  welcome_patterns: { ru: "Найди следующий элемент узора!", kz: "Өрнектің келесі элементін тап!", en: "Find the next pattern element!" },
+  welcome_culture: { ru: "Узнай больше о Казахстане!", kz: "Қазақстан туралы көбірек біл!", en: "Learn more about Kazakhstan!" },
+  welcome_daily_chest: { ru: "У тебя есть подарок!", kz: "Сыйлығың бар!", en: "You have a gift!" },
+  welcome_rewards: { ru: "Твои награды и купоны!", kz: "Сыйлықтарың мен купондарың!", en: "Your rewards & coupons!" },
+  welcome_album: { ru: "Твой альбом стикеров!", kz: "Стикер жинағың!", en: "Your sticker album!" },
+  welcome_garden: { ru: "Смотри как растут твои навыки!", kz: "Дағдыларыңның өсуін қара!", en: "Watch your skills grow!" },
+  welcome_qr: { ru: "Сканируй упаковку Бота!", kz: "Бота орамасын сканерле!", en: "Scan a Bota package!" },
+  chest_opened: { ru: "Молодец! Вот твоя награда!", kz: "Жарайсың! Міне сыйлығың!", en: "Great job! Here's your reward!" },
+  stuck_hint: { ru: "Нужна помощь? Попробуй нажать на одну из кнопок!", kz: "Көмек керек пе? Батырмалардың бірін бас!", en: "Need help? Try tapping one of the buttons!" },
+  // ── Nav labels ──
+  open_map: { ru: "Карта", kz: "Карта", en: "Map" },
+  open_rewards: { ru: "Награды", kz: "Сыйлық", en: "Rewards" },
+  open_album: { ru: "Альбом", kz: "Жинақ", en: "Album" },
+  open_garden: { ru: "Сад навыков", kz: "Дағды бағы", en: "Skill Garden" },
+  open_qr: { ru: "QR сканер", kz: "QR сканер", en: "QR Scanner" },
+  open_chest: { ru: "Сундук", kz: "Сандық", en: "Chest" },
+  open_photo_frame: { ru: "Фото с Ботой", kz: "Ботамен фото", en: "Photo with Bota" },
+  open_leaderboard: { ru: "Лидерборд", kz: "Көшбасшылар", en: "Leaderboard" },
+  // ── Daily tasks / streaks ──
+  daily_tasks: { ru: "Ежедневные задания", kz: "Күнделікті тапсырмалар", en: "Daily Tasks" },
+  streak_label: { ru: "дней подряд", kz: "күн қатарынан", en: "day streak" },
+  all_tasks_done: { ru: "Все задания выполнены!", kz: "Барлық тапсырмалар орындалды!", en: "All tasks completed!" },
+  // ── Sharing / QR ──
+  share_whatsapp: { ru: "Отправить в WhatsApp", kz: "WhatsApp-қа жіберу", en: "Share on WhatsApp" },
+  download_photo: { ru: "Скачать фото", kz: "Фотоны жүктеу", en: "Download photo" },
+  scan_camera: { ru: "Сканировать камерой", kz: "Камерамен сканерлеу", en: "Scan with camera" },
+  level_unlocked: { ru: "Уровень разблокирован!", kz: "Деңгей ашылды!", en: "Level unlocked!" },
+  // ── Onboarding ──
+  onb_whats_name: { ru: "Как тебя зовут?", kz: "Сенің атың кім?", en: "What's your name?" },
+  onb_how_old: { ru: "Сколько тебе лет?", kz: "Жасың нешеде?", en: "How old are you?" },
+  onb_pick_lang: { ru: "Выбери язык", kz: "Тілді таңда", en: "Pick your language" },
+  onb_next_comfort: { ru: "Далее: настройка комфорта", kz: "Келесі: ыңғайлылық", en: "Next: Comfort setup" },
+  onb_skip: { ru: "Пропустить", kz: "Өткізіп жіберу", en: "Skip for now" },
+  onb_intro: { ru: "Привет! Я Бота-верблюд! Давай учиться и играть вместе!", kz: "Сәлем! Мен Бота-түйе! Бірге оқып ойнайық!", en: "Hi! I'm Bota the Camel! Let's learn and play together!" },
+  onb_comfort_title: { ru: "Настройка комфорта", kz: "Ыңғайлылық баптау", en: "Learning Comfort Setup" },
+  onb_comfort_subtitle: { ru: "Настройте приложение для вашего ребёнка", kz: "Балаңыз үшін қолданбаны баптаңыз", en: "Make the app comfortable for your child" },
+  onb_create_profile: { ru: "Создать профиль", kz: "Профиль жасау", en: "Create adaptive profile" },
+  // ── Map screen ──
+  map_title: { ru: "Куда дальше", kz: "Келесі қайда", en: "Where to next" },
+  map_lead: { ru: "В каждом городе тебя ждёт задание. Пройди все и стань Чемпионом Бота!", kz: "Әр қалада тапсырма күтеді. Барлығын өт — Бота Чемпионы бол!", en: "Each city has a quest. Complete them all to become a Bota Champion!" },
+  map_quests_complete: { ru: "квестов пройдено", kz: "квест өтілді", en: "quests complete" },
+  map_all_done: { ru: "Все квесты пройдены!", kz: "Барлық квесттер өтілді!", en: "All quests complete!" },
+  map_try_next: { ru: "Попробуй:", kz: "Келесі:", en: "Try next:" },
+  map_tap_city: { ru: "Нажми на город для начала квеста!", kz: "Қаланы басып квестті бастаңыз!", en: "Tap a city to start a quest!" },
+  // ── Game shell ──
+  game_eyebrow: { ru: "Обучающий квест", kz: "Білім беру квесті", en: "Educational quest" },
+  game_read_aloud: { ru: "Прочитать вслух", kz: "Дауыстап оқу", en: "Read aloud" },
+  game_explain_simpler: { ru: "Объяснить проще", kz: "Оңайырақ түсіндіру", en: "Explain simpler" },
+  game_hint_no_rush: { ru: "Не торопись! Аудио опционально.", kz: "Асықпа! Аудио қосымша.", en: "Take your time! Audio is optional." },
+  game_no_timer: { ru: "Без таймера — в своём темпе!", kz: "Таймерсіз — өз қарқынында!", en: "No timer — go at your own pace!" },
+  // ── Results ──
+  result_title_great: { ru: "Отлично!", kz: "Керемет!", en: "Amazing job!" },
+  result_title_ok: { ru: "Молодец!", kz: "Жарайсың!", en: "Well done!" },
+  result_quest_complete: { ru: "Квест пройден!", kz: "Квест өтілді!", en: "Quest complete!" },
+  result_earned: { ru: "Ты заработал(а)", kz: "Сен жинадың", en: "You earned" },
+  result_practice: { ru: "Отличная практика!", kz: "Тамаша жаттығу!", en: "Great practice!" },
+  result_learning_focus: { ru: "Тема обучения:", kz: "Оқу тақырыбы:", en: "Learning focus:" },
+  result_new_stickers: { ru: "Новые в альбоме", kz: "Жинаққа жаңа", en: "New in your album" },
+  result_back_map: { ru: "Назад на карту", kz: "Картаға оралу", en: "Back to Map" },
+  // ── Rewards ──
+  rewards_title: { ru: "Твои награды Бота", kz: "Бота сыйлықтарың", en: "Your Bota Rewards" },
+  rewards_lead: { ru: "Играй в квесты, зарабатывай монеты и открывай награды!", kz: "Квесттер ойна, тиын жина, сыйлық аш!", en: "Play quests, earn coins and unlock rewards!" },
+  rewards_coins: { ru: "Монеты Бота", kz: "Бота тиындары", en: "Bota Coins" },
+  // ── Chest ──
+  chest_title_open: { ru: "Открой сундук", kz: "Сандықты аш", en: "Open today's chest" },
+  chest_title_done: { ru: "Сундук открыт!", kz: "Сандық ашылды!", en: "Today's chest is open!" },
+  chest_come_back: { ru: "Приходи завтра за новым сюрпризом.", kz: "Ертең жаңа сюрприз алуға кел.", en: "Come back tomorrow for another surprise." },
+  chest_fact_label: { ru: "Факт о Казахстане", kz: "Қазақстан туралы факт", en: "Kazakhstan fact" },
+  // ── Album ──
+  album_title: { ru: "Мой альбом Казахстана", kz: "Менің Қазақстан жинағым", en: "My Kazakhstan Album" },
+  album_lead: { ru: "Собирай стикеры, исследуя города и сканируя упаковки.", kz: "Қалаларды зерттеп, орамаларды сканерлеп стикер жина.", en: "Collect stickers by exploring cities and scanning packages." },
+  album_collected: { ru: "стикеров собрано", kz: "стикер жиналды", en: "stickers collected" },
+  // ── Garden ──
+  garden_title: { ru: "Мой сад навыков", kz: "Менің дағды бағым", en: "My Skill Garden" },
+  garden_lead: { ru: "Каждый квест поливает свой навык. Играй и расти!", kz: "Әр квест дағдыны суарады. Ойна және өс!", en: "Each quest waters a skill. Play and grow!" },
+  garden_total: { ru: "Всего очков обучения:", kz: "Жалпы оқу ұпайлары:", en: "Total learning points:" },
+  // ── Parent ──
+  parent_pin_title: { ru: "Режим родителя", kz: "Ата-ана режимі", en: "Parent Mode" },
+  parent_enter_pin: { ru: "Введите ПИН", kz: "PIN енгізіңіз", en: "Enter PIN" },
+  parent_dashboard: { ru: "Панель родителя", kz: "Ата-ана панелі", en: "Parent Dashboard" },
+  parent_progress: { ru: "Прогресс", kz: "Прогресс", en: "Progress" },
+  parent_reset: { ru: "Сбросить прогресс", kz: "Прогресті қалпына келтіру", en: "Reset Progress" },
+  parent_settings: { ru: "Профиль комфорта", kz: "Ыңғайлылық профилі", en: "Learning Comfort Profile" },
+  // ── Leaderboard ──
+  lb_title: { ru: "Лидерборд", kz: "Көшбасшылар тізімі", en: "Leaderboard" },
+  lb_rank: { ru: "Место", kz: "Орын", en: "Rank" },
+  lb_name: { ru: "Имя", kz: "Есім", en: "Name" },
+  lb_coins_col: { ru: "Монеты", kz: "Тиындар", en: "Coins" },
+  lb_streak_col: { ru: "Серия", kz: "Серия", en: "Streak" },
+  lb_you: { ru: "(вы)", kz: "(сіз)", en: "(you)" },
+  // ── Common ──
+  back: { ru: "Назад", kz: "Артқа", en: "Back" },
+  correct: { ru: "Правильно!", kz: "Дұрыс!", en: "Correct!" },
+  try_again: { ru: "Попробуй ещё", kz: "Қайта тырыс", en: "Try again" },
+  coins_label: { ru: "монет", kz: "тиын", en: "coins" },
+  completed: { ru: "Пройдено", kz: "Өтілді", en: "Completed" },
+  locked: { ru: "Заблокировано", kz: "Бекітілген", en: "Locked" },
+  ready: { ru: "Готово", kz: "Дайын", en: "Ready" },
 };
 
 export function uiStr(key: string, lang: Language): string {
-  return UI_STRINGS[key]?.[lang] ?? UI_STRINGS[key]?.ru ?? key;
+  return UI_STRINGS[key]?.[lang] ?? UI_STRINGS[key]?.en ?? key;
 }
 
 export function makeMathQuestions(age: Age, settings?: AccessibilitySettings) {

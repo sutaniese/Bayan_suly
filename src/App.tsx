@@ -5,6 +5,7 @@ import {
   DAILY_CHEST_REWARD,
   STICKERS,
   STREAK_MILESTONES,
+  buildLeaderboard,
   applyDailyChest,
   applyGameAward,
   applyQrItemScan,
@@ -40,6 +41,7 @@ import type {
   Age,
   DailyTaskEvent,
   Language,
+  LeaderboardEntry,
   LearningSession,
   QrItem,
   SupportNeed,
@@ -50,6 +52,7 @@ import { cancelVoicePlayback, resolveVoiceCommand, speakText, transcribeAudio } 
 import type { VoiceAgentContext, VoiceCommand } from "../shared/voice";
 
 type View =
+  | "landing"
   | "onboarding"
   | "adaptive-profile-result"
   | "map"
@@ -69,7 +72,8 @@ type View =
   | "qr"
   | "secret"
   | "garden"
-  | "photo-frame";
+  | "photo-frame"
+  | "leaderboard";
 type Skill = "memory" | "math" | "language" | "culture" | "logic";
 
 type GameResult = {
@@ -165,6 +169,7 @@ const GLOBAL_VOICE_COMMANDS: VoiceCommand[] = [
   "open_daily_chest",
   "open_daily_tasks",
   "open_photo_frame",
+  "open_leaderboard",
   "repeat_instruction",
   "read_current_screen",
   "show_coins",
@@ -325,7 +330,8 @@ function loadProfile(): UserProfile | null {
 
 function App() {
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
-  const [view, setView] = useState<View>(() => (loadProfile() ? "map" : "onboarding"));
+  const [view, setView] = useState<View>("landing");
+  const [landingLang, setLandingLang] = useState<Language>("en");
   const [result, setResult] = useState<GameResult | null>(null);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
   const gameInstructionRef = useRef<{ title: string; hint: string }>({ title: "", hint: "" });
@@ -476,7 +482,8 @@ function App() {
       view === "qr" ||
       view === "daily-chest" ||
       view === "daily-tasks" ||
-      view === "photo-frame");
+      view === "photo-frame" ||
+      view === "leaderboard");
   const voiceContext = useMemo<VoiceAgentContext | null>(() => {
     if (!profile) return null;
     return {
@@ -494,8 +501,21 @@ function App() {
     <main className={className}>
       <div className={`phone ${showChildHub ? "phone--with-hub" : ""}`}>
         <div className="phone-body">
-          {profile && view !== "onboarding" && (
-            <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} />
+          {profile && view !== "onboarding" && view !== "landing" && (
+            <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} onLangChange={(l) => setProfile((p) => p ? { ...p, language: l } : p)} />
+          )}
+          {view === "landing" && (
+            <Landing
+              savedName={loadProfile()?.name ?? null}
+              lang={landingLang}
+              onLang={setLandingLang}
+              onStart={() => setView("onboarding")}
+              onContinue={() => {
+                const saved = loadProfile();
+                if (saved) { setProfile(saved); setView("map"); }
+                else setView("onboarding");
+              }}
+            />
           )}
           {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("adaptive-profile-result"); }} />}
           {profile && view === "adaptive-profile-result" && <AdaptiveProfileResult profile={profile} onContinue={() => setView("map")} />}
@@ -583,8 +603,9 @@ function App() {
           {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} onSpeak={speak} />}
           {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
           {profile && view === "photo-frame" && <BotaPhotoFrame profile={profile} onBack={() => setView("rewards")} />}
+          {profile && view === "leaderboard" && <Leaderboard profile={profile} onBack={() => setView("map")} />}
         </div>
-        {showChildHub && <ChildHubNav active={view as HubTabView} onGo={setView} onParent={() => setView("parent-pin")} />}
+        {showChildHub && <ChildHubNav active={view as HubTabView} onGo={setView} onParent={() => setView("parent-pin")} lang={profile?.language ?? "en"} />}
         {profile && (
           <BotaVoiceGuide
             profile={profile}
@@ -730,6 +751,10 @@ function BotaVoiceGuide({
       case "open_photo_frame":
         setView("photo-frame");
         confirmIfVoice("Opening photo frame.");
+        break;
+      case "open_leaderboard":
+        setView("leaderboard");
+        confirmIfVoice("Opening leaderboard.");
         break;
       case "repeat_instruction": {
         const { hint, title } = lastInstructionRef.current;
@@ -897,6 +922,7 @@ function BotaVoiceGuide({
     { cmd: "open_daily_chest", label: "Open chest" },
     { cmd: "open_daily_tasks", label: "Daily tasks" },
     { cmd: "open_photo_frame", label: "Photo frame" },
+    { cmd: "open_leaderboard", label: "Leaderboard" },
     { cmd: "repeat_instruction", label: "Repeat instruction" },
     { cmd: "read_current_screen", label: "Read this screen" },
     { cmd: "show_coins", label: "How many coins?" },
@@ -953,32 +979,52 @@ function BotaVoiceGuide({
   );
 }
 
-function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile; onMap: () => void; onRewards: () => void; onParent: () => void }) {
+function TopBar({ profile, onMap, onRewards, onParent, onLangChange }: { profile: UserProfile; onMap: () => void; onRewards: () => void; onParent: () => void; onLangChange: (l: Language) => void }) {
+  const t = (k: string) => uiStr(k, profile.language);
+  const langs: { code: Language; flag: string }[] = [
+    { code: "kz", flag: "🇰🇿" },
+    { code: "ru", flag: "🇷🇺" },
+    { code: "en", flag: "🇬🇧" },
+  ];
   return (
     <header className="topbar">
-      <button className="icon-button" onClick={onMap} aria-label="Map">🗺️</button>
+      <button className="icon-button" onClick={onMap} aria-label={t("open_map")}>🗺️</button>
       <div className="brand-lockup">
         <strong>Bota Quest</strong>
-        <span>🪙 {profile.coins} coins</span>
+        <span>🪙 {profile.coins} {t("coins_label")}</span>
       </div>
       <div className="top-actions">
-        <button className="icon-button" onClick={onRewards} aria-label="Rewards">🎁</button>
-        <button className="icon-button" onClick={onParent} aria-label="Parent mode">🔒</button>
+        <div className="lang-switch">
+          {langs.map((l) => (
+            <button
+              key={l.code}
+              className={`lang-btn ${profile.language === l.code ? "lang-btn--active" : ""}`}
+              onClick={() => onLangChange(l.code)}
+              aria-label={l.code}
+            >
+              {l.flag}
+            </button>
+          ))}
+        </div>
+        <button className="icon-button" onClick={onRewards} aria-label={t("open_rewards")}>🎁</button>
+        <button className="icon-button" onClick={onParent} aria-label={t("parent_pin_title")}>🔒</button>
       </div>
     </header>
   );
 }
 
-type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest" | "daily-tasks" | "photo-frame";
+type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest" | "daily-tasks" | "photo-frame" | "leaderboard";
 
-function ChildHubNav({ active, onGo, onParent }: { active: HubTabView; onGo: (view: View) => void; onParent: () => void }) {
+function ChildHubNav({ active, onGo, onParent, lang }: { active: HubTabView; onGo: (view: View) => void; onParent: () => void; lang: Language }) {
+  const t = (k: string) => uiStr(k, lang);
   const tabs: { view: HubTabView; icon: string; label: string }[] = [
-    { view: "map", icon: "🗺️", label: "Map" },
-    { view: "album", icon: "📔", label: "Album" },
-    { view: "garden", icon: "🌱", label: "Garden" },
-    { view: "rewards", icon: "🎁", label: "Rewards" },
-    { view: "qr", icon: "📦", label: "QR" },
-    { view: "daily-chest", icon: "🧰", label: "Chest" },
+    { view: "map", icon: "🗺️", label: t("open_map") },
+    { view: "album", icon: "📔", label: t("open_album") },
+    { view: "garden", icon: "🌱", label: t("open_garden") },
+    { view: "rewards", icon: "🎁", label: t("open_rewards") },
+    { view: "qr", icon: "📦", label: t("open_qr") },
+    { view: "daily-chest", icon: "🧰", label: t("open_chest") },
+    { view: "leaderboard", icon: "🏆", label: t("open_leaderboard") },
   ];
   return (
     <nav className="child-hub-nav" aria-label="Quick navigation">
@@ -1063,24 +1109,24 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
     setStep("comfort");
   };
 
+  const t = (k: string) => uiStr(k, language);
+
   return (
     <section className="screen hero-screen">
       <div className="mascot">🐫</div>
       <h1>Bota Quest</h1>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
-        <p>
-          Hi there! I'm <strong>Bota the Camel</strong>! Let's explore Kazakhstan together, play fun learning games, and earn shiny coins!
-        </p>
+        <p>{t("onb_intro")}</p>
       </div>
       {step === "profile" ? (
         <form className="panel" onSubmit={nextFromProfile}>
           <label>
-            What's your name?
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Type your name..." />
+            {t("onb_whats_name")}
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="..." />
           </label>
           <label>
-            How old are you?
+            {t("onb_how_old")}
             <select value={age} onChange={(event) => setAge(Number(event.target.value) as Age)}>
               {[7, 8, 9, 10, 11].map((item) => (
                 <option key={item}>{item}</option>
@@ -1088,30 +1134,33 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
             </select>
           </label>
           <fieldset>
-            <legend>Pick your language</legend>
+            <legend>{t("onb_pick_lang")}</legend>
             <div className="segmented">
               <button type="button" className={language === "kz" ? "active" : ""} onClick={() => setLanguage("kz")}>
-                Қазақша
+                🇰🇿 Қазақша
               </button>
               <button type="button" className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>
-                Русский
+                🇷🇺 Русский
+              </button>
+              <button type="button" className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>
+                🇬🇧 English
               </button>
             </div>
           </fieldset>
           <div className="cta-row">
             <button className="primary" type="submit">
-              Next: Comfort setup
+              {t("onb_next_comfort")}
             </button>
             <button type="button" onClick={() => startWithNeeds(["standard"], "default")}>
-              Skip for now
+              {t("onb_skip")}
             </button>
           </div>
         </form>
       ) : (
         <>
-          <p className="eyebrow">Learning Comfort Setup</p>
-          <h2>Make Botara comfortable for your child</h2>
-          <p className="lead">Choose how the app should adapt. You can change this later in Parent Mode.</p>
+          <p className="eyebrow">{t("onb_comfort_title")}</p>
+          <h2>{t("onb_comfort_subtitle")}</h2>
+          <p className="lead">{t("onb_comfort_subtitle")}</p>
 
           {(() => {
             const settings = buildAccessibilitySettings(normalizedNeeds);
@@ -1160,10 +1209,10 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
 
           <div className="cta-row">
             <button className="primary" type="button" onClick={() => startWithNeeds(normalizedNeeds, "manual")}>
-              Create adaptive profile
+              {t("onb_create_profile")}
             </button>
             <button type="button" onClick={() => startWithNeeds(["standard"], "default")}>
-              Skip for now
+              {t("onb_skip")}
             </button>
           </div>
 
@@ -1604,11 +1653,11 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
   );
 }
 
-const MEMORY_CARD_VOICE: Record<string, { ru: string; kz: string }> = {
-  "🍬": { ru: "конфета", kz: "қант" },
-  "🍫": { ru: "шоколад", kz: "шоколад" },
-  "🍭": { ru: "леденец", kz: "тәтті сағыз" },
-  "🐫": { ru: "верблюд", kz: "түйе" },
+const MEMORY_CARD_VOICE: Record<string, { ru: string; kz: string; en: string }> = {
+  "🍬": { ru: "конфета", kz: "қант", en: "candy" },
+  "🍫": { ru: "шоколад", kz: "шоколад", en: "chocolate" },
+  "🍭": { ru: "леденец", kz: "тәтті сағыз", en: "lollipop" },
+  "🐫": { ru: "верблюд", kz: "түйе", en: "camel" },
 };
 
 function MemoryGame({
@@ -2826,10 +2875,10 @@ function BotaPhotoFrame({ profile, onBack }: { profile: UserProfile; onBack: () 
   const lang = profile.language;
   const [template, setTemplate] = useState<"champion" | "collector" | "streak">("champion");
 
-  const titles: Record<typeof template, { ru: string; kz: string }> = {
-    champion: { ru: "Чемпион квеста!", kz: "Квест чемпионы!" },
-    collector: { ru: "Коллекционер стикеров!", kz: "Стикер жинаушы!" },
-    streak: { ru: "Мастер серии!", kz: "Серия шебері!" },
+  const titles: Record<typeof template, { ru: string; kz: string; en: string }> = {
+    champion: { ru: "Чемпион квеста!", kz: "Квест чемпионы!", en: "Quest Champion!" },
+    collector: { ru: "Коллекционер стикеров!", kz: "Стикер жинаушы!", en: "Sticker Collector!" },
+    streak: { ru: "Мастер серии!", kz: "Серия шебері!", en: "Streak Master!" },
   };
 
   const draw = useCallback(() => {
@@ -2910,7 +2959,125 @@ function BotaPhotoFrame({ profile, onBack }: { profile: UserProfile; onBack: () 
         <button className="primary" onClick={downloadImage}>📥 {uiStr("download_photo", lang)}</button>
         <button onClick={shareWhatsApp}>💬 {uiStr("share_whatsapp", lang)}</button>
       </div>
-      <button onClick={onBack}>← {lang === "kz" ? "Артқа" : "Назад"}</button>
+      <button onClick={onBack}>← {uiStr("back", lang)}</button>
+    </section>
+  );
+}
+
+// ──── Landing page ────
+function Landing({
+  savedName,
+  lang,
+  onLang,
+  onStart,
+  onContinue,
+}: {
+  savedName: string | null;
+  lang: Language;
+  onLang: (l: Language) => void;
+  onStart: () => void;
+  onContinue: () => void;
+}) {
+  const t = (k: string) => uiStr(k, lang);
+  const features = [
+    { icon: "🎮", key: "landing_feat_games" },
+    { icon: "🐫", key: "landing_feat_voice" },
+    { icon: "🪙", key: "landing_feat_rewards" },
+    { icon: "📦", key: "landing_feat_qr" },
+    { icon: "🔥", key: "landing_feat_streak" },
+    { icon: "♿", key: "landing_feat_access" },
+  ];
+  const langs: { code: Language; flag: string; label: string }[] = [
+    { code: "kz", flag: "🇰🇿", label: "Қазақша" },
+    { code: "ru", flag: "🇷🇺", label: "Русский" },
+    { code: "en", flag: "🇬🇧", label: "English" },
+  ];
+
+  return (
+    <section className="landing">
+      <div className="landing-lang-picker">
+        {langs.map((l) => (
+          <button
+            key={l.code}
+            className={`lang-btn ${lang === l.code ? "lang-btn--active" : ""}`}
+            onClick={() => onLang(l.code)}
+          >
+            {l.flag} {l.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="landing-hero">
+        <div className="landing-mascot">🐫</div>
+        <h1 className="landing-headline">{t("landing_headline")}</h1>
+        <p className="landing-subtitle">{t("landing_subtitle")}</p>
+
+        <div className="landing-cta-group">
+          {savedName ? (
+            <>
+              <button className="landing-cta" onClick={onContinue}>
+                {t("landing_continue")} {savedName}
+              </button>
+              <button className="landing-cta landing-cta--secondary" onClick={onStart}>
+                {t("landing_new")}
+              </button>
+            </>
+          ) : (
+            <button className="landing-cta" onClick={onStart}>
+              {t("landing_start")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="landing-features">
+        {features.map((f) => (
+          <div key={f.key} className="landing-feature-card">
+            <span className="landing-feature-icon">{f.icon}</span>
+            <p>{t(f.key)}</p>
+          </div>
+        ))}
+      </div>
+
+      <footer className="landing-footer">
+        Bayan Sulu &times; Bota Quest &copy; 2026
+      </footer>
+    </section>
+  );
+}
+
+// ──── Leaderboard ────
+function Leaderboard({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
+  const lang = profile.language;
+  const t = (k: string) => uiStr(k, lang);
+  const rows = useMemo(() => buildLeaderboard(profile), [profile]);
+  const medals = ["🥇", "🥈", "🥉"];
+
+  return (
+    <section className="screen leaderboard-screen">
+      <p className="eyebrow">{t("lb_title")}</p>
+      <h2>{t("lb_title")}</h2>
+      <div className="leaderboard-table">
+        <div className="leaderboard-row leaderboard-header">
+          <span className="leaderboard-rank">{t("lb_rank")}</span>
+          <span className="leaderboard-name">{t("lb_name")}</span>
+          <span className="leaderboard-coins">{t("lb_coins_col")}</span>
+          <span className="leaderboard-streak">{t("lb_streak_col")}</span>
+        </div>
+        {rows.map((row, i) => (
+          <div key={row.name + i} className={`leaderboard-row ${row.isPlayer ? "leaderboard-highlight" : ""}`}>
+            <span className="leaderboard-rank leaderboard-medal">
+              {i < 3 ? medals[i] : i + 1}
+            </span>
+            <span className="leaderboard-name">
+              {row.avatar} {row.name} {row.isPlayer ? t("lb_you") : ""}
+            </span>
+            <span className="leaderboard-coins">🪙 {row.coins}</span>
+            <span className="leaderboard-streak">🔥 {row.streak}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={onBack}>← {t("back")}</button>
     </section>
   );
 }
