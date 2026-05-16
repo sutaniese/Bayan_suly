@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { applyGameAward, applyQrUnlock, makeMathQuestions, makeProfile } from "./gameLogic";
+
+describe("game reward rules", () => {
+  it("awards completion and bonus coins once per game", () => {
+    const first = applyGameAward(makeProfile("Amina", 8, "kz"), "memory", "Memory Master", 20, 10);
+    const second = applyGameAward(first.profile, "memory", "Memory Master", 20, 10);
+
+    expect(first.coinsEarned).toBe(30);
+    expect(first.profile.coins).toBe(30);
+    expect(first.profile.completedGames).toEqual(["memory"]);
+    expect(first.profile.badges).toEqual(["Memory Master"]);
+    expect(second.coinsEarned).toBe(0);
+    expect(second.profile.coins).toBe(30);
+  });
+
+  it("unlocks QR location and awards QR coins once", () => {
+    const first = applyQrUnlock(makeProfile("Amina", 8, "kz"));
+    const second = applyQrUnlock(first);
+
+    expect(first.coins).toBe(15);
+    expect(first.unlockedLocations).toContain("secret");
+    expect(second.coins).toBe(15);
+  });
+
+  it("uses age-based math difficulty", () => {
+    expect(makeMathQuestions(7)[0].answer).toBe(5);
+    expect(makeMathQuestions(9)[0].answer).toBe(9);
+    expect(makeMathQuestions(11)[0].answer).toBe(12);
+  });
+});
