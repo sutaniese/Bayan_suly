@@ -1,59 +1,47 @@
-import { errorResponse, getGroqConfig, jsonResponse, parseGroqError, postGroqJson } from "../_lib/groq";
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
-export const runtime = "nodejs";
+export const config = { runtime: "nodejs" };
 
-type SpeakRequest = {
-  text?: string;
-  language?: string;
-};
-
-async function handleRequest(request: Request): Promise<Response> {
-  if (request.method !== "POST") return errorResponse("Method not allowed", 405);
-
-  let body: SpeakRequest;
-  try {
-    body = (await request.json()) as SpeakRequest;
-  } catch {
-    return errorResponse("Invalid JSON body", 400);
-  }
-
-  const text = body.text?.trim();
-  if (!text) return errorResponse("Missing text", 400);
-
-  const language = body.language?.trim() || "ru";
-
-  // Groq TTS currently works best for supported voices/models; fall back to browser TTS for local app languages.
-  if (language !== "en") {
-    return jsonResponse({ ok: false, fallback: "browser", reason: "unsupported_language" }, { status: 200 });
-  }
-
-  try {
-    const { ttsModel, ttsVoice, ttsFormat } = getGroqConfig();
-    const response = await postGroqJson("/audio/speech", {
-      model: ttsModel,
-      voice: ttsVoice,
-      input: text.slice(0, 4096),
-      response_format: ttsFormat,
-    });
-
-    if (!response.ok) {
-      return errorResponse(await parseGroqError(response), response.status);
-    }
-
-    const audio = await response.arrayBuffer();
-    return new Response(audio, {
-      status: 200,
-      headers: {
-        "Content-Type": ttsFormat === "mp3" ? "audio/mpeg" : "audio/wav",
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Speech synthesis failed";
-    return errorResponse(message, 500);
-  }
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
 }
 
-export default {
-  fetch: handleRequest,
-};
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) return json({ error: "Server misconfiguration: missing GROQ_API_KEY" }, 500);
+
+  let body: { text?: string; voice?: string };
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const text = body.text?.trim();
+  if (!text) return json({ error: "Missing text" }, 400);
+
+  const ttsModel = process.env.GROQ_TTS_MODEL?.trim() || "playai-tts";
+  const voice = body.voice?.trim() || process.env.GROQ_TTS_VOICE?.trim() || "Arista-PlayAI";
+
+  try {
+    const res = await fetch(`${GROQ_API_BASE}/audio/speech`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: ttsModel, input: text, voice, response_format: "wav" }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return json({ error: `Groq TTS error: ${errText.slice(0, 300)}` }, res.status);
+    }
+
+    const buf = await res.arrayBuffer();
+    return new Response(buf, {
+      status: 200,
+      headers: { "Content-Type": "audio/wav", "Content-Length": String(buf.byteLength) },
+    });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : "TTS failed" }, 500);
+  }
+}
