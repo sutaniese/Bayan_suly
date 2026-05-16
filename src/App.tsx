@@ -243,9 +243,11 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
           return (
             <button key={location.id} className={`location ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
               <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
-              <strong>{location.city}</strong>
-              <small>{location.title}</small>
-              <em>{location.skill}</em>
+              <div>
+                <strong>{location.city}</strong>
+                <small>{location.title}</small>
+              </div>
+              <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
             </button>
           );
         })}

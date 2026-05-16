@@ -38,11 +38,15 @@ h3 { font-size: 1.35rem; }
 .panel { display: grid; gap: 0.9rem; }
 .primary, .segmented .active { background: #e97132; color: #fff; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.map { position: relative; display: grid; gap: 0.85rem; padding: 0.7rem; border-radius: 24px; background: linear-gradient(150deg, #a7d7ef, #bddd8c 48%, #f5c56b); border: 3px solid #24311f; }
-.location { min-height: 112px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.25rem 0.75rem; text-align: left; background: #fffaf0; }
-.location span { grid-row: span 3; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #68b06d; color: #fff; }
-.location small, .location em { font-style: normal; color: #53634d; }
+.map { position: relative; display: grid; gap: 0.85rem; padding: 0.85rem; border-radius: 18px; background: linear-gradient(150deg, #8fcbe4, #bddd8c 48%, #f4c05d); border: 3px solid #24311f; }
+.map::before { content: ""; position: absolute; inset: 1rem; border: 2px dashed rgba(36, 49, 31, 0.26); border-radius: 18px; pointer-events: none; }
+.location { position: relative; z-index: 1; min-height: 102px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.45rem 0.75rem; text-align: left; background: rgba(255, 250, 240, 0.96); border: 2px solid rgba(36, 49, 31, 0.18); }
+.location span { grid-row: span 2; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: #68b06d; color: #fff; font-size: 1.4rem; border: 2px solid #24311f; }
+.location div { display: grid; gap: 0.2rem; }
+.location small, .location em { display: block; font-style: normal; color: #53634d; }
+.location em { justify-self: start; border-radius: 999px; padding: 0.22rem 0.55rem; background: #ecf7e3; font-size: 0.78rem; font-weight: 900; color: #246e45; }
 .location.completed span { background: #246e45; }
+.location.completed { background: #f0ffe6; border-color: #246e45; }
 .location.locked span { background: #777; }
 .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
