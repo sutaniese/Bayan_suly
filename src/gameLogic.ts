@@ -1,14 +1,47 @@
 export type Age = 7 | 8 | 9 | 10 | 11;
 export type Language = "ru" | "kz";
 
+export type SupportNeed = "vision" | "hearing" | "motor" | "focus" | "standard";
+
 export type AccessibilitySettings = {
+  enabled: boolean;
+
+  // Visual support
+  largeText: boolean;
   largeButtons: boolean;
   highContrast: boolean;
+  simplifiedVisuals: boolean;
+
+  // Hearing support
+  textHints: boolean;
+  subtitles: boolean;
+  visualFeedback: boolean;
+  soundRequired: boolean;
+
+  // Motor support
+  extraLargeTouchTargets: boolean;
+  noDragRequired: boolean;
+  gestureAnswerMode: boolean;
+  confirmBeforeActions: boolean;
+
+  // Cognitive / focus support
   noTimer: boolean;
   reducedAnimations: boolean;
-  textHints: boolean;
+  simplifiedInstructions: boolean;
+  oneTaskAtATime: boolean;
+  fewerAnswerOptions: boolean;
+
+  // Voice guide
   voiceInstructions: boolean;
-  gestureAnswerMode: boolean;
+  voiceNavigation: boolean;
+  botaVoiceGuide: boolean;
+};
+
+export type AdaptiveProfile = {
+  supportNeeds: SupportNeed[];
+  settings: AccessibilitySettings;
+  setupSource: "manual" | "mock_document" | "default";
+  recommendationSummary: string[];
 };
 
 export type SkillProgress = {
@@ -153,21 +186,35 @@ export type UserProfile = {
   scannedQrItems: string[];
   skillProgress: SkillProgress;
   sessionHistory: LearningSession[];
-  accessibility: AccessibilitySettings;
+  adaptiveProfile: AdaptiveProfile;
   awardedEvents: string[];
 };
 
 export const CORE_LOCATION_IDS = ["almaty", "turkestan", "astana", "karaganda", "shymkent"];
 export const STORAGE_KEY = "botaQuest:v1";
 
-export const defaultAccessibility: AccessibilitySettings = {
+export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
+  enabled: false,
+  largeText: false,
   largeButtons: false,
   highContrast: false,
+  simplifiedVisuals: false,
+  textHints: true,
+  subtitles: true,
+  visualFeedback: true,
+  soundRequired: false,
+  extraLargeTouchTargets: false,
+  noDragRequired: false,
+  gestureAnswerMode: false,
+  confirmBeforeActions: false,
   noTimer: false,
   reducedAnimations: false,
-  textHints: false,
+  simplifiedInstructions: false,
+  oneTaskAtATime: false,
+  fewerAnswerOptions: false,
   voiceInstructions: false,
-  gestureAnswerMode: false,
+  voiceNavigation: false,
+  botaVoiceGuide: false,
 };
 
 export const defaultSkillProgress: SkillProgress = {
@@ -349,13 +396,40 @@ export function makeProfile(name: string, age: Age, language: Language): UserPro
     scannedQrItems: [],
     skillProgress: { ...defaultSkillProgress },
     sessionHistory: [],
-    accessibility: defaultAccessibility,
+    adaptiveProfile: {
+      supportNeeds: ["standard"],
+      settings: { ...DEFAULT_ACCESSIBILITY_SETTINGS },
+      setupSource: "default",
+      recommendationSummary: [],
+    },
     awardedEvents: [],
   };
 }
 
-function hydrateProfile(raw: Partial<UserProfile>): UserProfile {
-  const base = makeProfile(raw.name ?? "", raw.age ?? 7, raw.language ?? "ru");
+function hydrateAccessibilitySettings(raw: unknown): AccessibilitySettings {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Partial<AccessibilitySettings>;
+  return { ...DEFAULT_ACCESSIBILITY_SETTINGS, ...obj };
+}
+
+function hydrateAdaptiveProfile(raw: unknown): AdaptiveProfile {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Partial<AdaptiveProfile> & { settings?: unknown };
+  const supportNeeds =
+    Array.isArray(obj.supportNeeds) && obj.supportNeeds.length ? (obj.supportNeeds as SupportNeed[]) : (["standard"] as SupportNeed[]);
+  return {
+    supportNeeds,
+    settings: hydrateAccessibilitySettings(obj.settings),
+    setupSource: obj.setupSource ?? "default",
+    recommendationSummary: Array.isArray(obj.recommendationSummary) ? (obj.recommendationSummary as string[]) : [],
+  };
+}
+
+function hydrateProfile(raw: any): UserProfile {
+  const base = makeProfile(raw?.name ?? "", raw?.age ?? 7, raw?.language ?? "ru");
+  const legacyAccessibility = raw?.accessibility;
+  const adaptiveProfile = raw?.adaptiveProfile
+    ? hydrateAdaptiveProfile(raw.adaptiveProfile)
+    : hydrateAdaptiveProfile({ settings: legacyAccessibility });
+
   return {
     ...base,
     ...raw,
@@ -367,7 +441,7 @@ function hydrateProfile(raw: Partial<UserProfile>): UserProfile {
     scannedQrItems: raw.scannedQrItems ?? [],
     skillProgress: { ...defaultSkillProgress, ...(raw.skillProgress ?? {}) },
     sessionHistory: raw.sessionHistory ?? [],
-    accessibility: { ...defaultAccessibility, ...(raw.accessibility ?? {}) },
+    adaptiveProfile,
     awardedEvents: raw.awardedEvents ?? [],
   };
 }

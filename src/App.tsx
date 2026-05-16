@@ -164,7 +164,7 @@ function App() {
   }, [profile]);
 
   const className = useMemo(() => {
-    const a = profile?.accessibility;
+    const a = profile?.adaptiveProfile.settings;
     return [
       "app",
       a?.highContrast ? "high-contrast" : "",
@@ -250,15 +250,15 @@ function App() {
           {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
           {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
           {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
-          {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
-          {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
-          {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
-          {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-          {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+          {profile && view === "memory" && <MemoryGame accessibility={profile.adaptiveProfile.settings} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
+          {profile && view === "words" && <WordsGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
+          {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
+          {profile && view === "patterns" && <PatternGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+          {profile && view === "culture" && <CultureGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
           {profile && view === "result" && result && (
             <ResultScreen
               result={result}
-              accessibility={profile.accessibility}
+              accessibility={profile.adaptiveProfile.settings}
               onMap={() => setView("map")}
               onRewards={() => setView("rewards")}
               onAlbum={() => setView("album")}
@@ -567,19 +567,19 @@ function DailyChest({
             <strong>Kazakhstan fact</strong>
             <p>{reward.fact}</p>
           </div>
-          {profile.accessibility.voiceInstructions && (
+          {profile.adaptiveProfile.settings.voiceInstructions && (
             <button onClick={() => onSpeak(reward.fact)}>🔊 Read fact aloud</button>
           )}
-          {profile.accessibility.textHints && (
+          {profile.adaptiveProfile.settings.textHints && (
             <p className="hint">You can open one chest per day. Come back tomorrow for another fact.</p>
           )}
         </>
       ) : (
         <>
-          {profile.accessibility.textHints && (
+          {profile.adaptiveProfile.settings.textHints && (
             <p className="hint">Daily chests give small rewards without streak pressure.</p>
           )}
-          {profile.accessibility.voiceInstructions && (
+          {profile.adaptiveProfile.settings.voiceInstructions && (
             <button onClick={() => onSpeak(`Open today's chest for ${reward.coins} coins and a Kazakhstan fact.`)}>🔊 Read aloud</button>
           )}
           <button className="primary" onClick={onOpen}>Open chest 🎁</button>
@@ -1139,7 +1139,14 @@ function ParentDashboard({
 }
 
 function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfile; onChange: (profile: UserProfile) => void; onBack: () => void }) {
-  const set = (key: keyof AccessibilitySettings) => onChange({ ...profile, accessibility: { ...profile.accessibility, [key]: !profile.accessibility[key] } });
+  const set = (key: keyof AccessibilitySettings) =>
+    onChange({
+      ...profile,
+      adaptiveProfile: {
+        ...profile.adaptiveProfile,
+        settings: { ...profile.adaptiveProfile.settings, [key]: !profile.adaptiveProfile.settings[key] },
+      },
+    });
   const items: [keyof AccessibilitySettings, string][] = [
     ["largeButtons", "Large Buttons"],
     ["highContrast", "High Contrast"],
@@ -1154,7 +1161,7 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
       <p className="eyebrow">Qolaily Mode</p>
       <h2>♿ Learning Comfort Profile</h2>
       <p className="lead">Let’s make the app comfortable for your child. You can change these anytime in Parent Mode.</p>
-      <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.accessibility[key]} onChange={() => set(key)} /></label>)}</div>
+      <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.adaptiveProfile.settings[key]} onChange={() => set(key)} /></label>)}</div>
       <button className="primary" onClick={onBack}>← Back to Parent Mode</button>
     </section>
   );
