@@ -26,17 +26,16 @@ export default async function handler(req: Request): Promise<Response> {
   if (!audioBase64) return json({ error: "Missing audioBase64" }, 400);
 
   const mimeType = body.mimeType?.trim() || "audio/webm";
-  const asrModel = process.env.GROQ_ASR_MODEL?.trim() || "whisper-large-v3-turbo";
+  const asrModel = process.env.GROQ_ASR_MODEL?.trim() || "distil-whisper-large-v3-en";
 
   try {
     const binary = atob(audioBase64);
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
     const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : mimeType.includes("wav") ? "wav" : "webm";
     const blob = new Blob([bytes], { type: mimeType });
-    const file = new File([blob], `input.${ext}`, { type: mimeType });
 
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", blob, `input.${ext}`);
     form.append("model", asrModel);
     if (body.language?.trim()) form.append("language", body.language.trim());
 

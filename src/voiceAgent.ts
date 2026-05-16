@@ -38,7 +38,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 export async function transcribeAudio(blob: Blob, language: Language): Promise<{ transcript: string; language: string | null }> {
   const audioBase64 = await blobToBase64(blob);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   let response: Response;
   try {
     response = await fetch("/api/voice/transcribe", {
