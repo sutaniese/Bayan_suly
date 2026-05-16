@@ -27,6 +27,8 @@ function localMatch(raw: string): string | null {
   if (has("open garden", "garden", "сад", "бақ")) return "open_garden";
   if (has("open qr", "scan package", "qr", "скан", "пакет")) return "open_qr";
   if (has("open chest", "daily chest", "сундук", "сандық")) return "open_daily_chest";
+  if (has("daily task", "задани", "тапсырма", "ежедневн")) return "open_daily_tasks";
+  if (has("photo frame", "фото", "рамка", "фото бота", "ботамен фото")) return "open_photo_frame";
   if (has("repeat", "повтори", "қайтала")) return "repeat_instruction";
   if (has("read screen", "read this", "прочитай экран", "экранды оқы")) return "read_current_screen";
   if (has("coins", "монеты", "тиын")) return "show_coins";

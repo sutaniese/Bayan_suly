@@ -4,9 +4,13 @@ import {
   STORAGE_KEY,
   DAILY_CHEST_REWARD,
   STICKERS,
+  STREAK_MILESTONES,
   applyDailyChest,
   applyGameAward,
   applyQrItemScan,
+  checkDailyTaskProgress,
+  updateStreak,
+  uiStr,
   getSessionForDate,
   getUserProfile,
   createMemoryDeck,
@@ -34,6 +38,7 @@ import type {
   AccessibilitySettings,
   AdaptiveInstruction,
   Age,
+  DailyTaskEvent,
   Language,
   LearningSession,
   QrItem,
@@ -56,13 +61,15 @@ type View =
   | "result"
   | "rewards"
   | "daily-chest"
+  | "daily-tasks"
   | "album"
   | "parent-pin"
   | "parent"
   | "accessibility"
   | "qr"
   | "secret"
-  | "garden";
+  | "garden"
+  | "photo-frame";
 type Skill = "memory" | "math" | "language" | "culture" | "logic";
 
 type GameResult = {
@@ -156,6 +163,8 @@ const GLOBAL_VOICE_COMMANDS: VoiceCommand[] = [
   "open_garden",
   "open_qr",
   "open_daily_chest",
+  "open_daily_tasks",
+  "open_photo_frame",
   "repeat_instruction",
   "read_current_screen",
   "show_coins",
@@ -365,7 +374,12 @@ function App() {
       stickersUnlocked,
       skillPracticeSummary: skillPracticeSummaryForGame(game.gameId),
     };
-    setProfile(nextProfile);
+    const withTasks = checkDailyTaskProgress(nextProfile, {
+      gamesPlayed: 1,
+      coinsEarned: award.coinsEarned,
+      stickersCollected: stickersUnlocked.length,
+    });
+    setProfile(withTasks);
     setResult(nextResult);
     setView("result");
   };
@@ -375,7 +389,11 @@ function App() {
     const item = QR_ITEMS.find((entry) => entry.id === itemId);
     if (!item) return;
     const result = applyQrItemScan(profile, item);
-    setProfile(result.profile);
+    const withTasks = checkDailyTaskProgress(result.profile, {
+      coinsEarned: result.coinsEarned,
+      stickersCollected: result.stickerUnlocked ? 1 : 0,
+    });
+    setProfile(withTasks);
     setQrMessage(result.alreadyScanned ? `${item.productName} already collected.` : item.unlockMessage);
   };
 
@@ -386,10 +404,22 @@ function App() {
     setView("onboarding");
   };
 
+  useEffect(() => {
+    if (!profile) return;
+    const today = getToday();
+    const updated = updateStreak(profile, today);
+    if (updated !== profile) setProfile(updated);
+  }, []);
+
+  const trackDailyTaskEvent = useCallback((event: DailyTaskEvent) => {
+    setProfile((p) => p ? checkDailyTaskProgress(p, event) : p);
+  }, []);
+
   const openDailyChest = () => {
     if (!profile) return;
     const update = applyDailyChest(profile, getToday());
     setProfile(update.profile);
+    trackDailyTaskEvent({ chestsOpened: 1, coinsEarned: update.coinsEarned });
   };
 
   const speak = useCallback(
@@ -413,6 +443,30 @@ function App() {
     [profile?.language],
   );
 
+  useEffect(() => {
+    if (!profile) return;
+    const s = profile.adaptiveProfile.settings;
+    if (!s.botaVoiceGuide) return;
+    const key = `welcome_${view}` as string;
+    const text = uiStr(key, profile.language);
+    if (text !== key) {
+      const t = window.setTimeout(() => speak(text), 600);
+      return () => window.clearTimeout(t);
+    }
+  }, [view, profile?.language, profile?.adaptiveProfile.settings.botaVoiceGuide]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const s = profile.adaptiveProfile.settings;
+    if (!s.botaVoiceGuide) return;
+    const gameViews: View[] = ["memory", "words", "math", "patterns", "culture"];
+    if (!gameViews.includes(view)) return;
+    const t = window.setTimeout(() => {
+      speak(uiStr("stuck_hint", profile.language));
+    }, 15000);
+    return () => window.clearTimeout(t);
+  }, [view, profile?.language, profile?.adaptiveProfile.settings.botaVoiceGuide]);
+
   const showChildHub =
     Boolean(profile) &&
     (view === "map" ||
@@ -420,7 +474,9 @@ function App() {
       view === "garden" ||
       view === "rewards" ||
       view === "qr" ||
-      view === "daily-chest");
+      view === "daily-chest" ||
+      view === "daily-tasks" ||
+      view === "photo-frame");
   const voiceContext = useMemo<VoiceAgentContext | null>(() => {
     if (!profile) return null;
     return {
@@ -502,10 +558,12 @@ function App() {
               onRewards={() => setView("rewards")}
               onAlbum={() => setView("album")}
               onGarden={() => setView("garden")}
+              onPhotoFrame={() => setView("photo-frame")}
             />
           )}
           {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
-          {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
+          {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} onTasks={() => setView("daily-tasks")} />}
+          {profile && view === "daily-tasks" && <DailyTasksScreen profile={profile} onBack={() => setView("daily-chest")} />}
           {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
           {profile && view === "parent-pin" && (
             <ParentPin accessibility={profile.adaptiveProfile.settings} onSpeak={speak} onSuccess={() => setView("parent")} />
@@ -522,8 +580,9 @@ function App() {
             />
           )}
           {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
-          {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} />}
+          {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} onSpeak={speak} />}
           {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
+          {profile && view === "photo-frame" && <BotaPhotoFrame profile={profile} onBack={() => setView("rewards")} />}
         </div>
         {showChildHub && <ChildHubNav active={view as HubTabView} onGo={setView} onParent={() => setView("parent-pin")} />}
         {profile && (
@@ -663,6 +722,14 @@ function BotaVoiceGuide({
       case "open_daily_chest":
         setView("daily-chest");
         confirmIfVoice("Opening the daily chest.");
+        break;
+      case "open_daily_tasks":
+        setView("daily-tasks");
+        confirmIfVoice("Opening daily tasks.");
+        break;
+      case "open_photo_frame":
+        setView("photo-frame");
+        confirmIfVoice("Opening photo frame.");
         break;
       case "repeat_instruction": {
         const { hint, title } = lastInstructionRef.current;
@@ -828,6 +895,8 @@ function BotaVoiceGuide({
     { cmd: "open_garden", label: "Open garden" },
     { cmd: "open_qr", label: "Open QR" },
     { cmd: "open_daily_chest", label: "Open chest" },
+    { cmd: "open_daily_tasks", label: "Daily tasks" },
+    { cmd: "open_photo_frame", label: "Photo frame" },
     { cmd: "repeat_instruction", label: "Repeat instruction" },
     { cmd: "read_current_screen", label: "Read this screen" },
     { cmd: "show_coins", label: "How many coins?" },
@@ -900,7 +969,7 @@ function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile;
   );
 }
 
-type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest";
+type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest" | "daily-tasks" | "photo-frame";
 
 function ChildHubNav({ active, onGo, onParent }: { active: HubTabView; onGo: (view: View) => void; onParent: () => void }) {
   const tabs: { view: HubTabView; icon: string; label: string }[] = [
@@ -1359,11 +1428,13 @@ function DailyChest({
   onOpen,
   onBack,
   onSpeak,
+  onTasks,
 }: {
   profile: UserProfile;
   onOpen: () => void;
   onBack: () => void;
   onSpeak: (text: string) => void;
+  onTasks: () => void;
 }) {
   const today = getToday();
   const opened = profile.openedDailyChestDates.includes(today);
@@ -1421,7 +1492,72 @@ function DailyChest({
           <button className="primary" onClick={onOpen}>Open chest 🎁</button>
         </>
       )}
+      {profile.currentStreak > 0 && (
+        <div className="streak-counter">
+          <span className="streak-flame">🔥</span>
+          <strong>{profile.currentStreak} {uiStr("streak_label", profile.language)}</strong>
+          {profile.longestStreak > profile.currentStreak && <small>Record: {profile.longestStreak}</small>}
+        </div>
+      )}
+      <button className="primary" onClick={onTasks}>{uiStr("daily_tasks", profile.language)}</button>
       <button onClick={onBack}>Back to Map</button>
+    </section>
+  );
+}
+
+function DailyTasksScreen({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
+  const lang = profile.language;
+  const tasks = profile.dailyTasks;
+  const allDone = tasks.length > 0 && tasks.every((t) => t.completed);
+
+  return (
+    <section className="screen daily-tasks-screen">
+      <p className="eyebrow">{uiStr("daily_tasks", lang)}</p>
+      <h2>{uiStr("daily_tasks", lang)}</h2>
+
+      {profile.currentStreak > 0 && (
+        <div className="streak-counter">
+          <span className="streak-flame">🔥</span>
+          <strong>{profile.currentStreak} {uiStr("streak_label", lang)}</strong>
+        </div>
+      )}
+
+      <div className="streak-milestones">
+        {STREAK_MILESTONES.map((m) => (
+          <div key={m.days} className={`milestone ${profile.currentStreak >= m.days ? "reached" : ""}`}>
+            <span>{m.days}🔥</span>
+            <small>{m.label[lang]}</small>
+          </div>
+        ))}
+      </div>
+
+      {tasks.length === 0 ? (
+        <p className="lead">Open the daily chest first to activate today's tasks!</p>
+      ) : (
+        <div className="task-list">
+          {tasks.map((task) => (
+            <div key={task.id} className={`task-card ${task.completed ? "done" : ""}`}>
+              <div className="task-card-top">
+                <span>{task.completed ? "✅" : "⬜"}</span>
+                <strong>{task.label[lang]}</strong>
+                <span className="task-reward">+{task.rewardCoins} 🪙</span>
+              </div>
+              <div className="skill-bar">
+                <span style={{ width: `${Math.min(100, (task.progress / task.target) * 100)}%` }} />
+              </div>
+              <small>{task.progress}/{task.target}</small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {allDone && (
+        <div className="garden-unlocked-banner">
+          🎉 <strong>{lang === "kz" ? "Барлық тапсырмалар орындалды!" : "Все задания выполнены!"}</strong>
+        </div>
+      )}
+
+      <button className="primary" onClick={onBack}>← {lang === "kz" ? "Артқа" : "Назад"}</button>
     </section>
   );
 }
@@ -2039,6 +2175,7 @@ function ResultScreen({
   onRewards,
   onAlbum,
   onGarden,
+  onPhotoFrame,
 }: {
   result: GameResult;
   accessibility: AccessibilitySettings;
@@ -2047,6 +2184,7 @@ function ResultScreen({
   onRewards: () => void;
   onAlbum: () => void;
   onGarden: () => void;
+  onPhotoFrame: () => void;
 }) {
   const great = result.score >= 80;
   const stickerDetails = result.stickersUnlocked
@@ -2103,6 +2241,7 @@ function ResultScreen({
         <button onClick={onGarden}>Skill Garden 🌱</button>
         <button onClick={onRewards}>Rewards 🎁</button>
         <button onClick={onAlbum}>Sticker Album 📔</button>
+        <button onClick={onPhotoFrame}>📸 Photo with Bota</button>
       </div>
     </section>
   );
@@ -2538,22 +2677,88 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
   );
 }
 
+function QrCameraScanner({ onDetected, onClose }: { onDetected: (code: string) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const BD = (globalThis as Record<string, any>).BarcodeDetector;
+    if (!BD) { setCamError("QR scanning not supported in this browser. Use Chrome on Android or desktop."); return; }
+    void (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; void videoRef.current.play(); }
+        const detector = new BD({ formats: ["qr_code"] });
+        const scan = async () => {
+          if (cancelled || !videoRef.current) return;
+          try {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes.length > 0) { onDetected(barcodes[0].rawValue as string); return; }
+          } catch { /* frame not ready */ }
+          requestAnimationFrame(scan);
+        };
+        requestAnimationFrame(scan);
+      } catch { if (!cancelled) setCamError("Camera access denied."); }
+    })();
+    return () => { cancelled = true; streamRef.current?.getTracks().forEach((t) => t.stop()); };
+  }, [onDetected]);
+
+  return (
+    <div className="qr-camera-overlay">
+      {camError ? (
+        <div className="panel"><p>{camError}</p><button className="primary" onClick={onClose}>Close</button></div>
+      ) : (
+        <><video ref={videoRef} className="qr-camera-video" playsInline muted /><div className="qr-scanner-frame" /><button className="primary qr-camera-close" onClick={onClose}>Cancel</button></>
+      )}
+    </div>
+  );
+}
+
 function QrCollection({
   profile,
   items,
   message,
   onScan,
   onSecret,
+  onSpeak,
 }: {
   profile: UserProfile;
   items: QrItem[];
   message: string | null;
   onScan: (itemId: string) => void;
   onSecret: () => void;
+  onSpeak: (text: string) => void;
 }) {
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
   const unlocked = profile.unlockedLocations.includes("secret");
+  const lang = profile.language;
+
+  const handleDetected = useCallback((code: string) => {
+    setCameraOpen(false);
+    const item = items.find((i) => i.id === code);
+    if (item) {
+      onScan(item.id);
+      const msg = uiStr("level_unlocked", lang) + " " + item.unlockMessage;
+      setUnlockMsg(msg);
+      onSpeak(msg);
+      window.setTimeout(() => setUnlockMsg(null), 5000);
+    }
+  }, [items, onScan, onSpeak, lang]);
+
   return (
     <section className="screen qr-collection-screen">
+      {cameraOpen && <QrCameraScanner onDetected={handleDetected} onClose={() => setCameraOpen(false)} />}
+      {unlockMsg && (
+        <div className="qr-unlock-celebration">
+          <div className="celebration"><span>✨</span><span>🌟</span><span>⭐</span><span>🌟</span><span>✨</span></div>
+          <h3>{unlockMsg}</h3>
+        </div>
+      )}
       <div className="qr-collection-hero">
         <div className="qr">▦</div>
         <div>
@@ -2562,9 +2767,10 @@ function QrCollection({
           <p className="lead">Each Bota package unlocks a new educational reward and keeps kids exploring.</p>
         </div>
       </div>
+      <button className="primary" onClick={() => setCameraOpen(true)}>📷 {uiStr("scan_camera", lang)}</button>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
-        <p>Pick a Bota package and tap “Simulate Scan” to unlock coins and stickers.</p>
+        <p>Scan a real QR code or tap a package below to unlock coins and stickers.</p>
       </div>
       {message && <p className="status">{message}</p>}
       <div className="qr-grid">
@@ -2579,8 +2785,9 @@ function QrCollection({
               </div>
               <h3>{item.title}</h3>
               <p className="qr-product">{item.productName}</p>
+              {item.unlocksLocation && <p className="qr-unlock-loc">Unlocks: {item.unlocksLocation}</p>}
               <p className="qr-reward">
-                Reward: {rewardSticker ? `${rewardSticker.imageEmoji} ${rewardSticker.title}` : "Sticker"}
+                Reward: {rewardSticker ? rewardSticker.imageEmoji + " " + rewardSticker.title : "Sticker"}
               </p>
               <button className="primary" disabled={scanned} onClick={() => onScan(item.id)}>
                 {scanned ? "Already collected" : "Simulate Scan"}
@@ -2592,28 +2799,7 @@ function QrCollection({
       <div className="qr-note">
         Each Bota package can unlock a new educational reward. This connects physical products with digital learning and repeat engagement.
       </div>
-      {unlocked && (
-        <button onClick={onSecret}>🌟 Open Secret Location</button>
-      )}
-    </section>
-  );
-}
-
-function QrUnlock({ profile, onUnlock, onSecret }: { profile: UserProfile; onUnlock: () => void; onSecret: () => void }) {
-  const unlocked = profile.unlockedLocations.includes("secret");
-  return (
-    <section className="screen center">
-      <div className="qr">▦</div>
-      <p className="eyebrow">Bota Package</p>
-      <h2>Unlock a Secret Adventure!</h2>
-      <div className="bota-bubble">
-        <div className="bota-face">🐫</div>
-        <p>{unlocked ? <><strong>Amazing!</strong> Your Bota package unlocked a secret quest!</> : "Got a Bota product? Scan the package to find a hidden adventure!"}</p>
-      </div>
-      <div className="cta-row">
-        <button className="primary" onClick={onUnlock}>📱 Scan Package</button>
-        {unlocked && <button onClick={onSecret}>🌟 Secret Quest</button>}
-      </div>
+      {unlocked && <button onClick={onSecret}>🌟 Open Secret Location</button>}
     </section>
   );
 }
@@ -2631,6 +2817,100 @@ function SecretLocation({ onMap }: { onMap: () => void }) {
         <p><strong>Congratulations!</strong> Every Bota package opens a new learning adventure. Keep collecting and exploring!</p>
       </div>
       <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
+    </section>
+  );
+}
+
+function BotaPhotoFrame({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lang = profile.language;
+  const [template, setTemplate] = useState<"champion" | "collector" | "streak">("champion");
+
+  const titles: Record<typeof template, { ru: string; kz: string }> = {
+    champion: { ru: "Чемпион квеста!", kz: "Квест чемпионы!" },
+    collector: { ru: "Коллекционер стикеров!", kz: "Стикер жинаушы!" },
+    streak: { ru: "Мастер серии!", kz: "Серия шебері!" },
+  };
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    canvas.width = 600;
+    canvas.height = 400;
+    const grad = ctx.createLinearGradient(0, 0, 600, 400);
+    grad.addColorStop(0, "#ffecd2");
+    grad.addColorStop(1, "#fcb69f");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 600, 400);
+    ctx.strokeStyle = "#e8a44a";
+    ctx.lineWidth = 12;
+    ctx.strokeRect(16, 16, 568, 368);
+    ctx.strokeStyle = "#d4893b";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(28, 28, 544, 344);
+    ctx.font = "bold 36px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#5a3e1b";
+    ctx.fillText(titles[template][lang], 300, 70);
+    ctx.font = "72px sans-serif";
+    ctx.fillText("🐫", 300, 170);
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillStyle = "#6b4226";
+    ctx.fillText(profile.name, 300, 230);
+    ctx.font = "20px sans-serif";
+    ctx.fillStyle = "#8b6914";
+    const stats = "🪙 " + profile.coins + " | 🏅 " + profile.badges.length + " | 📔 " + profile.unlockedStickers.length + "/" + STICKERS.length;
+    ctx.fillText(stats, 300, 270);
+    if (profile.currentStreak > 0) {
+      ctx.fillText("🔥 " + profile.currentStreak + " " + uiStr("streak_label", lang), 300, 305);
+    }
+    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#a08060";
+    ctx.fillText("Bota Quest — bayan-suly.vercel.app", 300, 370);
+  }, [profile, template, lang]);
+
+  useEffect(() => { draw(); }, [draw]);
+
+  const downloadImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "bota-" + profile.name + "-" + template + ".png";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const shareWhatsApp = () => {
+    const text = encodeURIComponent(titles[template][lang] + " — " + profile.name + " plays Bota Quest! https://bayan-suly.vercel.app");
+    window.open("https://wa.me/?text=" + text, "_blank");
+  };
+
+  return (
+    <section className="screen photo-frame-screen">
+      <p className="eyebrow">{uiStr("open_photo_frame", lang)}</p>
+      <h2>{uiStr("open_photo_frame", lang)}</h2>
+      <div className="frame-templates">
+        {(["champion", "collector", "streak"] as const).map((t) => (
+          <button key={t} className={"frame-template-btn " + (template === t ? "active" : "")} onClick={() => setTemplate(t)}>
+            {titles[t][lang]}
+          </button>
+        ))}
+      </div>
+      <div className="frame-canvas-wrap">
+        <canvas ref={canvasRef} className="frame-canvas" />
+      </div>
+      <div className="share-buttons">
+        <button className="primary" onClick={downloadImage}>📥 {uiStr("download_photo", lang)}</button>
+        <button onClick={shareWhatsApp}>💬 {uiStr("share_whatsapp", lang)}</button>
+      </div>
+      <button onClick={onBack}>← {lang === "kz" ? "Артқа" : "Назад"}</button>
     </section>
   );
 }

@@ -84,6 +84,19 @@ export type QrItem = {
   rewardStickerId: string;
   rewardCoins: number;
   unlockMessage: string;
+  unlocksLocation?: string;
+};
+
+export type DailyTaskType = "play_game" | "earn_coins" | "open_chest" | "collect_sticker";
+
+export type DailyTask = {
+  id: string;
+  type: DailyTaskType;
+  label: { ru: string; kz: string };
+  target: number;
+  progress: number;
+  rewardCoins: number;
+  completed: boolean;
 };
 
 export const STICKERS: Sticker[] = [
@@ -161,6 +174,7 @@ export const QR_ITEMS: QrItem[] = [
     rewardStickerId: "sticker-bota-pack",
     rewardCoins: 15,
     unlockMessage: "Bota Caramel unlocked a sweet steppe adventure!",
+    unlocksLocation: "almaty",
   },
   {
     id: "qr-bota-chocolate",
@@ -169,6 +183,7 @@ export const QR_ITEMS: QrItem[] = [
     rewardStickerId: "sticker-almaty-mountains",
     rewardCoins: 20,
     unlockMessage: "Bota Chocolate unlocked a mountain reward!",
+    unlocksLocation: "astana",
   },
   {
     id: "qr-bota-cookie",
@@ -177,6 +192,25 @@ export const QR_ITEMS: QrItem[] = [
     rewardStickerId: "sticker-yurt",
     rewardCoins: 15,
     unlockMessage: "Bota Cookies unlocked a cozy yurt sticker!",
+    unlocksLocation: "turkestan",
+  },
+  {
+    id: "qr-bota-waffle",
+    title: "Waffle Steppe Pack",
+    productName: "Bota Waffles",
+    rewardStickerId: "sticker-dombyra",
+    rewardCoins: 15,
+    unlockMessage: "Bota Waffles unlocked a steppe adventure!",
+    unlocksLocation: "karaganda",
+  },
+  {
+    id: "qr-bota-marshmallow",
+    title: "Marshmallow Culture Pack",
+    productName: "Bota Marshmallows",
+    rewardStickerId: "sticker-turkestan",
+    rewardCoins: 20,
+    unlockMessage: "Bota Marshmallows unlocked a cultural discovery!",
+    unlocksLocation: "shymkent",
   },
 ];
 
@@ -195,6 +229,11 @@ export type UserProfile = {
   sessionHistory: LearningSession[];
   adaptiveProfile: AdaptiveProfile;
   awardedEvents: string[];
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string | null;
+  dailyTasks: DailyTask[];
+  dailyTasksDate: string | null;
 };
 
 export const CORE_LOCATION_IDS = ["almaty", "turkestan", "astana", "karaganda", "shymkent"];
@@ -500,6 +539,11 @@ export function makeProfile(name: string, age: Age, language: Language): UserPro
       recommendationSummary: [],
     },
     awardedEvents: [],
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActiveDate: null,
+    dailyTasks: [],
+    dailyTasksDate: null,
   };
 }
 
@@ -540,6 +584,11 @@ function hydrateProfile(raw: any): UserProfile {
     sessionHistory: raw.sessionHistory ?? [],
     adaptiveProfile,
     awardedEvents: raw.awardedEvents ?? [],
+    currentStreak: raw.currentStreak ?? 0,
+    longestStreak: raw.longestStreak ?? 0,
+    lastActiveDate: raw.lastActiveDate ?? null,
+    dailyTasks: Array.isArray(raw.dailyTasks) ? raw.dailyTasks : [],
+    dailyTasksDate: raw.dailyTasksDate ?? null,
   };
 }
 
@@ -816,6 +865,156 @@ function adaptMathQuestionRow(seed: MathQuestionSeed, settings?: AccessibilitySe
     options = narrowNumericOptions(seed.answer, seed.options, 3);
   }
   return { prompt, answer: seed.answer, options };
+}
+
+// ──── Daily tasks & streak system ────
+
+const DAILY_TASK_POOL: Array<{ type: DailyTaskType; label: { ru: string; kz: string }; target: number; reward: number }> = [
+  { type: "play_game", label: { ru: "Пройди 1 игру", kz: "1 ойын ойна" }, target: 1, reward: 5 },
+  { type: "play_game", label: { ru: "Пройди 2 игры", kz: "2 ойын ойна" }, target: 2, reward: 10 },
+  { type: "earn_coins", label: { ru: "Заработай 10 монет", kz: "10 тиын жина" }, target: 10, reward: 5 },
+  { type: "earn_coins", label: { ru: "Заработай 20 монет", kz: "20 тиын жина" }, target: 20, reward: 10 },
+  { type: "open_chest", label: { ru: "Открой сундук", kz: "Сандықты аш" }, target: 1, reward: 5 },
+  { type: "collect_sticker", label: { ru: "Получи стикер", kz: "Стикер жина" }, target: 1, reward: 5 },
+];
+
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const out = [...arr];
+  let s = seed;
+  for (let i = out.length - 1; i > 0; i--) {
+    s = (s * 16807 + 0) % 2147483647;
+    const j = s % (i + 1);
+    const t = out[i]!; out[i] = out[j]!; out[j] = t;
+  }
+  return out;
+}
+
+export function generateDailyTasks(date: string): DailyTask[] {
+  const seed = date.split("-").reduce((a, b) => a * 31 + Number(b), 0);
+  const shuffled = seededShuffle(DAILY_TASK_POOL, seed);
+  const picked = shuffled.slice(0, 3);
+  return picked.map((t, i) => ({
+    id: `task-${date}-${i}`,
+    type: t.type,
+    label: t.label,
+    target: t.target,
+    progress: 0,
+    rewardCoins: t.reward,
+    completed: false,
+  }));
+}
+
+function dateDiffDays(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
+}
+
+export function updateStreak(profile: UserProfile, today: string): UserProfile {
+  if (profile.lastActiveDate === today) return profile;
+
+  let streak = profile.currentStreak;
+  if (profile.lastActiveDate && dateDiffDays(profile.lastActiveDate, today) === 1) {
+    streak += 1;
+  } else if (profile.lastActiveDate !== today) {
+    streak = 1;
+  }
+
+  const longestStreak = Math.max(profile.longestStreak, streak);
+  let tasks = profile.dailyTasks;
+  let tasksDate = profile.dailyTasksDate;
+  if (tasksDate !== today) {
+    tasks = generateDailyTasks(today);
+    tasksDate = today;
+  }
+
+  let bonusCoins = 0;
+  const badges = [...profile.badges];
+  if (streak === 3 && !profile.awardedEvents.includes("streak:3")) bonusCoins = 5;
+  if (streak === 7 && !profile.awardedEvents.includes("streak:7")) bonusCoins = 15;
+  if (streak === 30 && !profile.awardedEvents.includes("streak:30")) {
+    bonusCoins = 50;
+    if (!badges.includes("Streak Master")) badges.push("Streak Master");
+  }
+
+  const events = [...profile.awardedEvents];
+  if (bonusCoins > 0 && streak >= 3) events.push(`streak:${streak}`);
+
+  return {
+    ...profile,
+    currentStreak: streak,
+    longestStreak,
+    lastActiveDate: today,
+    dailyTasks: tasks,
+    dailyTasksDate: tasksDate,
+    coins: profile.coins + bonusCoins,
+    badges,
+    awardedEvents: events,
+  };
+}
+
+export type DailyTaskEvent = {
+  gamesPlayed?: number;
+  coinsEarned?: number;
+  chestsOpened?: number;
+  stickersCollected?: number;
+};
+
+export function checkDailyTaskProgress(profile: UserProfile, event: DailyTaskEvent): UserProfile {
+  let totalBonus = 0;
+  const tasks = profile.dailyTasks.map((task) => {
+    if (task.completed) return task;
+    let delta = 0;
+    if (task.type === "play_game") delta = event.gamesPlayed ?? 0;
+    else if (task.type === "earn_coins") delta = event.coinsEarned ?? 0;
+    else if (task.type === "open_chest") delta = event.chestsOpened ?? 0;
+    else if (task.type === "collect_sticker") delta = event.stickersCollected ?? 0;
+    if (delta <= 0) return task;
+    const progress = Math.min(task.target, task.progress + delta);
+    const completed = progress >= task.target;
+    if (completed && !task.completed) totalBonus += task.rewardCoins;
+    return { ...task, progress, completed };
+  });
+  return { ...profile, dailyTasks: tasks, coins: profile.coins + totalBonus };
+}
+
+export const STREAK_MILESTONES = [
+  { days: 3, coins: 5, label: { ru: "3 дня подряд: +5 монет", kz: "3 күн қатарынан: +5 тиын" } },
+  { days: 7, coins: 15, label: { ru: "7 дней подряд: +15 монет", kz: "7 күн қатарынан: +15 тиын" } },
+  { days: 30, coins: 50, label: { ru: "30 дней: +50 монет + значок", kz: "30 күн: +50 тиын + белгі" } },
+];
+
+// ──── UI strings (bilingual) ────
+
+export const UI_STRINGS: Record<string, { ru: string; kz: string }> = {
+  welcome_map: { ru: "Привет! Выбери город для приключения!", kz: "Сәлем! Қаланы таңда!" },
+  welcome_memory: { ru: "Найди все пары сладостей!", kz: "Барлық тәттілердің жұбын тап!" },
+  welcome_words: { ru: "Выбери казахское слово для картинки!", kz: "Суретке сәйкес қазақ сөзін таңда!" },
+  welcome_math: { ru: "Посчитай с Ботой!", kz: "Ботамен сана!" },
+  welcome_patterns: { ru: "Найди следующий элемент узора!", kz: "Өрнектің келесі элементін тап!" },
+  welcome_culture: { ru: "Узнай больше о Казахстане!", kz: "Қазақстан туралы көбірек біл!" },
+  welcome_daily_chest: { ru: "У тебя есть подарок!", kz: "Сыйлығың бар!" },
+  welcome_rewards: { ru: "Твои награды и купоны!", kz: "Сыйлықтарың мен купондарың!" },
+  welcome_album: { ru: "Твой альбом стикеров!", kz: "Стикер жинағың!" },
+  welcome_garden: { ru: "Смотри как растут твои навыки!", kz: "Дағдыларыңның өсуін қара!" },
+  welcome_qr: { ru: "Сканируй упаковку Бота!", kz: "Бота орамасын сканерле!" },
+  chest_opened: { ru: "Молодец! Вот твоя награда!", kz: "Жарайсың! Міне сыйлығың!" },
+  stuck_hint: { ru: "Нужна помощь? Попробуй нажать на одну из кнопок!", kz: "Көмек керек пе? Батырмалардың бірін бас!" },
+  open_map: { ru: "Карта", kz: "Карта" },
+  open_rewards: { ru: "Награды", kz: "Сыйлық" },
+  open_album: { ru: "Альбом", kz: "Жинақ" },
+  open_garden: { ru: "Сад навыков", kz: "Дағды бағы" },
+  open_qr: { ru: "QR сканер", kz: "QR сканер" },
+  open_chest: { ru: "Сундук", kz: "Сандық" },
+  open_photo_frame: { ru: "Фото с Ботой", kz: "Ботамен фото" },
+  daily_tasks: { ru: "Ежедневные задания", kz: "Күнделікті тапсырмалар" },
+  streak_label: { ru: "дней подряд", kz: "күн қатарынан" },
+  share_whatsapp: { ru: "Отправить в WhatsApp", kz: "WhatsApp-қа жіберу" },
+  download_photo: { ru: "Скачать фото", kz: "Фотоны жүктеу" },
+  scan_camera: { ru: "Сканировать камерой", kz: "Камерамен сканерлеу" },
+  level_unlocked: { ru: "Уровень разблокирован!", kz: "Деңгей ашылды!" },
+};
+
+export function uiStr(key: string, lang: Language): string {
+  return UI_STRINGS[key]?.[lang] ?? UI_STRINGS[key]?.ru ?? key;
 }
 
 export function makeMathQuestions(age: Age, settings?: AccessibilitySettings) {
