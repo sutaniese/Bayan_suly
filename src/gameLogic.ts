@@ -113,6 +113,33 @@ export const STICKERS: Sticker[] = [
   },
 ];
 
+export const QR_ITEMS: QrItem[] = [
+  {
+    id: "qr-bota-caramel",
+    title: "Caramel Adventure Pack",
+    productName: "Bota Caramel",
+    rewardStickerId: "sticker-bota-pack",
+    rewardCoins: 15,
+    unlockMessage: "Bota Caramel unlocked a sweet steppe adventure!",
+  },
+  {
+    id: "qr-bota-chocolate",
+    title: "Chocolate Mountain Pack",
+    productName: "Bota Chocolate",
+    rewardStickerId: "sticker-almaty-mountains",
+    rewardCoins: 20,
+    unlockMessage: "Bota Chocolate unlocked a mountain reward!",
+  },
+  {
+    id: "qr-bota-cookie",
+    title: "Cookie Yurt Pack",
+    productName: "Bota Cookies",
+    rewardStickerId: "sticker-yurt",
+    rewardCoins: 15,
+    unlockMessage: "Bota Cookies unlocked a cozy yurt sticker!",
+  },
+];
+
 export type UserProfile = {
   name: string;
   age: Age;
@@ -246,6 +273,41 @@ export function applyDailyChest(profile: UserProfile, date: string, reward: Dail
     coinsEarned: reward.coins,
     stickerUnlocked,
     reward,
+  };
+}
+
+export function applyQrItemScan(profile: UserProfile, item: QrItem) {
+  const alreadyScanned = profile.scannedQrItems.includes(item.id);
+  if (alreadyScanned) {
+    return {
+      profile,
+      alreadyScanned: true,
+      coinsEarned: 0,
+      stickerUnlocked: false,
+      secretUnlocked: false,
+    };
+  }
+
+  const stickerUnlocked = !profile.unlockedStickers.includes(item.rewardStickerId);
+  const unlockedStickers = Array.from(new Set([...profile.unlockedStickers, item.rewardStickerId]));
+  const secretUnlocked = !profile.unlockedLocations.includes("secret");
+  const unlockedLocations = secretUnlocked
+    ? Array.from(new Set([...profile.unlockedLocations, "secret"]))
+    : profile.unlockedLocations;
+
+  return {
+    profile: {
+      ...profile,
+      coins: profile.coins + item.rewardCoins,
+      scannedQrItems: Array.from(new Set([...profile.scannedQrItems, item.id])),
+      unlockedStickers,
+      unlockedLocations,
+      awardedEvents: Array.from(new Set([...profile.awardedEvents, `qr-item:${item.id}`])),
+    },
+    alreadyScanned: false,
+    coinsEarned: item.rewardCoins,
+    stickerUnlocked,
+    secretUnlocked,
   };
 }
 

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   CORE_LOCATION_IDS,
   DAILY_CHEST_REWARD,
+  QR_ITEMS,
   applyDailyChest,
   applyGameAward,
+  applyQrItemScan,
   applyQrUnlock,
   makeMathQuestions,
   makeProfile,
@@ -42,6 +44,17 @@ describe("game reward rules", () => {
     expect(first.profile.openedDailyChestDates).toContain(today);
     expect(second.coinsEarned).toBe(0);
     expect(second.profile.coins).toBe(DAILY_CHEST_REWARD.coins);
+  });
+
+  it("scans each QR item only once", () => {
+    const item = QR_ITEMS[0];
+    const first = applyQrItemScan(makeProfile("Amina", 8, "kz"), item);
+    const second = applyQrItemScan(first.profile, item);
+
+    expect(first.coinsEarned).toBe(item.rewardCoins);
+    expect(first.profile.scannedQrItems).toContain(item.id);
+    expect(first.profile.unlockedStickers).toContain(item.rewardStickerId);
+    expect(second.coinsEarned).toBe(0);
   });
 
   it("uses age-based math difficulty", () => {

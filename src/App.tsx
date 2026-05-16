@@ -6,13 +6,14 @@ import {
   STICKERS,
   applyDailyChest,
   applyGameAward,
-  applyQrUnlock,
+  applyQrItemScan,
   getUserProfile,
   makeMathQuestions,
   makeProfile,
   saveUserProfile,
+  QR_ITEMS,
 } from "./gameLogic";
-import type { AccessibilitySettings, Age, Language, UserProfile } from "./gameLogic";
+import type { AccessibilitySettings, Age, Language, QrItem, UserProfile } from "./gameLogic";
 
 type View =
   | "onboarding"
@@ -143,6 +144,7 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
   const [view, setView] = useState<View>(() => (loadProfile() ? "map" : "onboarding"));
   const [result, setResult] = useState<GameResult | null>(null);
+  const [qrMessage, setQrMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) saveUserProfile(profile);
@@ -183,9 +185,13 @@ function App() {
     setView("result");
   };
 
-  const unlockQr = () => {
+  const scanQrItem = (itemId: string) => {
     if (!profile) return;
-    setProfile(applyQrUnlock(profile));
+    const item = QR_ITEMS.find((entry) => entry.id === itemId);
+    if (!item) return;
+    const result = applyQrItemScan(profile, item);
+    setProfile(result.profile);
+    setQrMessage(result.alreadyScanned ? `${item.productName} already collected.` : item.unlockMessage);
   };
 
   const resetProgress = () => {
@@ -228,7 +234,7 @@ function App() {
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
         {profile && view === "parent" && <ParentDashboard profile={profile} onAlbum={() => setView("album")} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
         {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
-        {profile && view === "qr" && <QrUnlock profile={profile} onUnlock={unlockQr} onSecret={() => setView("secret")} />}
+        {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} />}
         {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
       </div>
     </main>
@@ -370,7 +376,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
           </div>
           <div className="cta-row">
             <button onClick={() => onGo("album")}>📔 Sticker Album</button>
-            <button onClick={() => onGo("qr")}>📦 Scan Package</button>
+            <button onClick={() => onGo("qr")}>📦 Package Collection</button>
             <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
           </div>
         </aside>
@@ -879,6 +885,67 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
       <p className="lead">Make the app comfortable for every child.</p>
       <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.accessibility[key]} onChange={() => set(key)} /></label>)}</div>
       <button className="primary" onClick={onBack}>← Back to Parent Mode</button>
+    </section>
+  );
+}
+
+function QrCollection({
+  profile,
+  items,
+  message,
+  onScan,
+  onSecret,
+}: {
+  profile: UserProfile;
+  items: QrItem[];
+  message: string | null;
+  onScan: (itemId: string) => void;
+  onSecret: () => void;
+}) {
+  const unlocked = profile.unlockedLocations.includes("secret");
+  return (
+    <section className="screen qr-collection-screen">
+      <div className="qr-collection-hero">
+        <div className="qr">▦</div>
+        <div>
+          <p className="eyebrow">Package Collection</p>
+          <h2>Scan Bota Packages</h2>
+          <p className="lead">Each Bota package unlocks a new educational reward and keeps kids exploring.</p>
+        </div>
+      </div>
+      <div className="bota-bubble">
+        <div className="bota-face">🐫</div>
+        <p>Pick a Bota package and tap “Simulate Scan” to unlock coins and stickers.</p>
+      </div>
+      {message && <p className="status">{message}</p>}
+      <div className="qr-grid">
+        {items.map((item) => {
+          const scanned = profile.scannedQrItems.includes(item.id);
+          const rewardSticker = STICKERS.find((sticker) => sticker.id === item.rewardStickerId);
+          return (
+            <article className={`qr-card ${scanned ? "scanned" : ""}`} key={item.id}>
+              <div className="qr-card-top">
+                <span className="qr-badge">{scanned ? "Collected" : "New"}</span>
+                <span className="qr-coins">+{item.rewardCoins} coins</span>
+              </div>
+              <h3>{item.title}</h3>
+              <p className="qr-product">{item.productName}</p>
+              <p className="qr-reward">
+                Reward: {rewardSticker ? `${rewardSticker.imageEmoji} ${rewardSticker.title}` : "Sticker"}
+              </p>
+              <button className="primary" disabled={scanned} onClick={() => onScan(item.id)}>
+                {scanned ? "Already collected" : "Simulate Scan"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+      <div className="qr-note">
+        Each Bota package can unlock a new educational reward. This connects physical products with digital learning and repeat engagement.
+      </div>
+      {unlocked && (
+        <button onClick={onSecret}>🌟 Open Secret Location</button>
+      )}
     </section>
   );
 }

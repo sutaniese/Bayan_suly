@@ -941,6 +941,75 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   animation: float 3s ease-in-out infinite;
 }
 
+.qr-collection-screen { gap: 1.2rem; }
+
+.qr-collection-hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.qr-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: #FFFDF7;
+  border: 2px solid rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-card);
+}
+
+.qr-card.scanned {
+  opacity: 0.6;
+}
+
+.qr-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.qr-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: #E8F5E9;
+  color: var(--accent-green-deep);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.qr-coins {
+  font-weight: 900;
+  color: var(--accent-orange-deep);
+}
+
+.qr-product {
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.qr-reward {
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.qr-note {
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-md);
+  background: #FFF8E1;
+  border: 2px solid rgba(255, 193, 7, 0.2);
+  font-weight: 700;
+  color: var(--text-main);
+}
+
 .secret-screen {
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255, 213, 79, 0.3) 0%, transparent 60%),
@@ -957,7 +1026,8 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .stats span, .high-contrast .toggle, .high-contrast input,
 .high-contrast select, .high-contrast .guide-card, .high-contrast .bota-bubble,
 .high-contrast .daily-chest-card, .high-contrast .fact-card, .high-contrast .sticker-pill,
-.high-contrast .sticker-card, .high-contrast .sticker-detail, .high-contrast .album-progress {
+.high-contrast .sticker-card, .high-contrast .sticker-detail, .high-contrast .album-progress,
+.high-contrast .qr-card, .high-contrast .qr-note {
   background: #111; color: #fff; border-color: #fff;
 }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,
@@ -1007,6 +1077,8 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   .daily-chest-card { grid-template-columns: 1fr; text-align: center; }
   .daily-chest-card .daily-chest-icon { margin: 0 auto; }
   .daily-chest-card button { width: 100%; }
+  .qr-collection-hero { grid-template-columns: 1fr; text-align: center; }
+  .qr-collection-hero .qr { margin: 0 auto; }
   .reward-grid { grid-template-columns: 1fr; }
   .coin-wallet { justify-items: start; }
   .reset-actions { flex-direction: column; }
