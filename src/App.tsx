@@ -130,6 +130,15 @@ const KZ_BOUNDS = {
   lonMax: 87.32,
 } as const;
 
+const KZ_DRAW_AREA = {
+  // The silhouette in this SVG does not fill the full image box, especially vertically.
+  // Project cities into the visible land area rather than the entire SVG canvas.
+  xMin: 8,
+  xMax: 92,
+  yMin: 12,
+  yMax: 70,
+} as const;
+
 function getLocationPositionPct(location: Location): { left: string; top: string } {
   if (typeof location.x === "number" && typeof location.y === "number") {
     return { left: `${location.x}%`, top: `${location.y}%` };
@@ -139,8 +148,11 @@ function getLocationPositionPct(location: Location): { left: string; top: string
     return { left: "50%", top: "50%" };
   }
 
-  const x = ((location.lon - KZ_BOUNDS.lonMin) / (KZ_BOUNDS.lonMax - KZ_BOUNDS.lonMin)) * 100;
-  const y = ((KZ_BOUNDS.latMax - location.lat) / (KZ_BOUNDS.latMax - KZ_BOUNDS.latMin)) * 100;
+  const lonPct = (location.lon - KZ_BOUNDS.lonMin) / (KZ_BOUNDS.lonMax - KZ_BOUNDS.lonMin);
+  const latPct = (KZ_BOUNDS.latMax - location.lat) / (KZ_BOUNDS.latMax - KZ_BOUNDS.latMin);
+
+  const x = KZ_DRAW_AREA.xMin + lonPct * (KZ_DRAW_AREA.xMax - KZ_DRAW_AREA.xMin);
+  const y = KZ_DRAW_AREA.yMin + latPct * (KZ_DRAW_AREA.yMax - KZ_DRAW_AREA.yMin);
 
   return { left: `${x}%`, top: `${y}%` };
 }
