@@ -4,6 +4,16 @@ import { matchVoiceCommand } from "../shared/voice";
 
 let currentAudio: HTMLAudioElement | null = null;
 
+async function readJsonIfPossible<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get("Content-Type") || "";
+  if (!contentType.includes("application/json")) return null;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function cancelVoicePlayback() {
   if (currentAudio) {
     currentAudio.pause();
@@ -37,8 +47,9 @@ export async function transcribeAudio(blob: Blob, language: Language): Promise<{
     }),
   });
 
-  const data = (await response.json()) as { transcript?: string; language?: string | null; error?: string };
-  if (!response.ok) throw new Error(data.error || "Transcription failed");
+  const data = await readJsonIfPossible<{ transcript?: string; language?: string | null; error?: string }>(response);
+  if (!response.ok) throw new Error(data?.error || "Transcription failed");
+  if (!data) throw new Error("Voice transcription returned an invalid server response.");
   return {
     transcript: data.transcript?.trim() || "",
     language: data.language ?? null,
@@ -55,21 +66,21 @@ export async function resolveVoiceCommand(
     body: JSON.stringify({ transcript, context }),
   });
 
-  const data = (await response.json()) as Partial<VoiceCommandResolution> & { error?: string };
+  const data = await readJsonIfPossible<Partial<VoiceCommandResolution> & { error?: string }>(response);
   const fallback = matchVoiceCommand(transcript);
   const action =
-    typeof data.action === "string" ? data.action : fallback && context.allowedCommands.includes(fallback) ? fallback : null;
+    typeof data?.action === "string" ? data.action : fallback && context.allowedCommands.includes(fallback) ? fallback : null;
 
   return {
     action,
     replyText:
-      typeof data.replyText === "string" && data.replyText.trim()
+      typeof data?.replyText === "string" && data.replyText.trim()
         ? data.replyText.trim()
         : action
           ? "Okay."
-          : data.error || "I could not understand that command.",
+          : data?.error || "I could not understand that command.",
     transcript,
-    source: data.source === "llm" || data.source === "fallback" ? data.source : action ? "fallback" : undefined,
+    source: data?.source === "llm" || data?.source === "fallback" ? data.source : action ? "fallback" : undefined,
   };
 }
 
