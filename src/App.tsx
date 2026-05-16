@@ -24,6 +24,7 @@ import {
   totalSkillProgress,
 } from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, SupportNeed, UserProfile } from "./gameLogic";
+import { cancelOpenAiPlayback, tryPlayOpenAiSpeech } from "./openaiTts";
 
 type VoiceCommand =
   | "open_map"
@@ -243,14 +244,28 @@ function App() {
     setProfile(update.profile);
   };
 
-  const speak = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const lang = profile?.language === "kz" ? "kk-KZ" : "ru-RU";
-    utterance.lang = lang;
-    window.speechSynthesis.speak(utterance);
-  };
+  const speak = useCallback(
+    (text: string) => {
+      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim();
+      const runBrowser = () => {
+        cancelOpenAiPlayback();
+        if (!("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        const lang = profile?.language === "kz" ? "kk-KZ" : "ru-RU";
+        utterance.lang = lang;
+        window.speechSynthesis.speak(utterance);
+      };
+      if (openaiKey) {
+        void tryPlayOpenAiSpeech(text, openaiKey, profile?.language ?? "ru").then((ok) => {
+          if (!ok) runBrowser();
+        });
+        return;
+      }
+      runBrowser();
+    },
+    [profile?.language],
+  );
 
   const showChildHub =
     Boolean(profile) &&
