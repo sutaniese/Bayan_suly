@@ -299,6 +299,38 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   line-height: 1.4;
 }
 
+.adaptive-result-panel {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.adaptive-result-needs {
+  margin: 0;
+  font-weight: 900;
+  color: var(--text-main);
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 213, 79, 0.35);
+  border: 2px solid rgba(255, 193, 7, 0.25);
+  color: var(--text-main);
+  font-weight: 900;
+  font-size: 0.8rem;
+}
+
 .primary, .segmented .active {
   background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-deep));
   color: #fff;

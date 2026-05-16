@@ -27,6 +27,7 @@ import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, Sup
 
 type View =
   | "onboarding"
+  | "adaptive-profile-result"
   | "map"
   | "memory"
   | "words"
@@ -249,7 +250,8 @@ function App() {
           {profile && view !== "onboarding" && (
             <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} />
           )}
-          {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
+          {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("adaptive-profile-result"); }} />}
+          {profile && view === "adaptive-profile-result" && <AdaptiveProfileResult profile={profile} onContinue={() => setView("map")} />}
           {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
           {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
           {profile && view === "memory" && <MemoryGame accessibility={profile.adaptiveProfile.settings} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
@@ -514,6 +516,75 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
           </button>
         </>
       )}
+    </section>
+  );
+}
+
+function AdaptiveProfileResult({ profile, onContinue }: { profile: UserProfile; onContinue: () => void }) {
+  const needs = profile.adaptiveProfile.supportNeeds;
+  const settings = profile.adaptiveProfile.settings;
+  const summary = profile.adaptiveProfile.recommendationSummary;
+
+  const needLabels: Record<SupportNeed, string> = {
+    vision: "Better visibility",
+    hearing: "Text instead of sound",
+    motor: "Easier touch controls",
+    focus: "Calm focus mode",
+    standard: "Standard mode",
+  };
+
+  const selectedNeedsText = needs.length ? needs.map((n) => needLabels[n] ?? n).join(" · ") : "Standard mode";
+
+  const enabledSettings = [
+    settings.largeText ? "Large text" : null,
+    settings.largeButtons ? "Large buttons" : null,
+    settings.highContrast ? "High contrast" : null,
+    settings.textHints ? "Text hints" : null,
+    settings.subtitles ? "Subtitles" : null,
+    settings.voiceInstructions ? "Voice instructions" : null,
+    settings.noTimer ? "No timer" : null,
+    settings.reducedAnimations ? "Reduced animations" : null,
+    settings.gestureAnswerMode ? "Gesture Answer Mode (mock)" : null,
+  ].filter((x): x is string => Boolean(x));
+
+  return (
+    <section className="screen center">
+      <p className="eyebrow">Adaptive profile</p>
+      <h2>Botara is ready for {profile.name}.</h2>
+      <p className="lead">We adjusted the app to make learning more comfortable. You can change these settings anytime in Parent Mode.</p>
+
+      <div className="panel adaptive-result-panel">
+        <strong>Selected support needs</strong>
+        <p className="adaptive-result-needs">{selectedNeedsText}</p>
+
+        {summary.length > 0 && (
+          <>
+            <strong>What will change</strong>
+            <ul className="recommendation-list">
+              {summary.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {enabledSettings.length > 0 && (
+          <>
+            <strong>Enabled settings</strong>
+            <div className="pill-row" aria-label="Enabled settings">
+              {enabledSettings.map((label) => (
+                <span key={label} className="pill">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <button className="primary" onClick={onContinue}>
+        Continue to the map 🗺️
+      </button>
     </section>
   );
 }
