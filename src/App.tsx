@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CORE_LOCATION_IDS,
   STORAGE_KEY,
@@ -24,6 +24,15 @@ import {
   totalSkillProgress,
 } from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, SupportNeed, UserProfile } from "./gameLogic";
+
+type VoiceCommand =
+  | "open_map"
+  | "open_words_game"
+  | "open_rewards"
+  | "repeat_instruction"
+  | "show_coins"
+  | "open_parent_mode"
+  | "enable_large_text";
 
 type View =
   | "onboarding"
@@ -161,6 +170,10 @@ function App() {
   const [view, setView] = useState<View>(() => (loadProfile() ? "map" : "onboarding"));
   const [result, setResult] = useState<GameResult | null>(null);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
+  const gameInstructionRef = useRef<{ title: string; hint: string }>({ title: "", hint: "" });
+  const registerGameInstruction = useCallback((info: { title: string; hint: string }) => {
+    gameInstructionRef.current = info;
+  }, []);
 
   useEffect(() => {
     if (profile) saveUserProfile(profile);
@@ -231,10 +244,12 @@ function App() {
   };
 
   const speak = (text: string) => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-    }
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const lang = profile?.language === "kz" ? "kk-KZ" : "ru-RU";
+    utterance.lang = lang;
+    window.speechSynthesis.speak(utterance);
   };
 
   const showChildHub =
@@ -257,11 +272,53 @@ function App() {
           {profile && view === "adaptive-profile-result" && <AdaptiveProfileResult profile={profile} onContinue={() => setView("map")} />}
           {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
           {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
-          {profile && view === "memory" && <MemoryGame accessibility={profile.adaptiveProfile.settings} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
-          {profile && view === "words" && <WordsGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
-          {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
-          {profile && view === "patterns" && <PatternGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-          {profile && view === "culture" && <CultureGame accessibility={profile.adaptiveProfile.settings} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+          {profile && view === "memory" && (
+            <MemoryGame
+              accessibility={profile.adaptiveProfile.settings}
+              onRegisterInstruction={registerGameInstruction}
+              onDone={() =>
+                awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")
+              }
+              onSpeak={speak}
+            />
+          )}
+          {profile && view === "words" && (
+            <WordsGame
+              accessibility={profile.adaptiveProfile.settings}
+              onRegisterInstruction={registerGameInstruction}
+              onDone={(score) =>
+                awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")
+              }
+              onSpeak={speak}
+            />
+          )}
+          {profile && view === "math" && (
+            <MathGame
+              age={profile.age}
+              accessibility={profile.adaptiveProfile.settings}
+              onRegisterInstruction={registerGameInstruction}
+              onDone={(score) =>
+                awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")
+              }
+              onSpeak={speak}
+            />
+          )}
+          {profile && view === "patterns" && (
+            <PatternGame
+              accessibility={profile.adaptiveProfile.settings}
+              onRegisterInstruction={registerGameInstruction}
+              onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)}
+              onSpeak={speak}
+            />
+          )}
+          {profile && view === "culture" && (
+            <CultureGame
+              accessibility={profile.adaptiveProfile.settings}
+              onRegisterInstruction={registerGameInstruction}
+              onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)}
+              onSpeak={speak}
+            />
+          )}
           {profile && view === "result" && result && (
             <ResultScreen
               result={result}
@@ -291,8 +348,143 @@ function App() {
           {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
         </div>
         {showChildHub && <ChildHubNav active={view as HubTabView} onGo={setView} onParent={() => setView("parent-pin")} />}
+        {profile && (
+          <BotaVoiceGuide
+            profile={profile}
+            view={view}
+            showChildHub={showChildHub}
+            lastInstructionRef={gameInstructionRef}
+            speak={speak}
+            setView={setView}
+            setProfile={setProfile}
+          />
+        )}
       </div>
     </main>
+  );
+}
+
+function BotaVoiceGuide({
+  profile,
+  view,
+  showChildHub,
+  lastInstructionRef,
+  speak,
+  setView,
+  setProfile,
+}: {
+  profile: UserProfile;
+  view: View;
+  showChildHub: boolean;
+  lastInstructionRef: React.MutableRefObject<{ title: string; hint: string }>;
+  speak: (text: string) => void;
+  setView: (v: View) => void;
+  setProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coinFlash, setCoinFlash] = useState<string | null>(null);
+  const settings = profile.adaptiveProfile.settings;
+  const enabled = settings.botaVoiceGuide || settings.voiceInstructions;
+  const hidden =
+    view === "onboarding" || view === "parent-pin" || view === "parent" || view === "accessibility";
+  if (!enabled || hidden) return null;
+
+  const confirmIfVoice = (phrase: string) => {
+    if (settings.voiceInstructions) speak(phrase);
+  };
+
+  const run = (cmd: VoiceCommand) => {
+    switch (cmd) {
+      case "open_map":
+        setView("map");
+        confirmIfVoice("Opening the map.");
+        break;
+      case "open_words_game":
+        setView("words");
+        confirmIfVoice("Opening Find the Kazakh Word.");
+        break;
+      case "open_rewards":
+        setView("rewards");
+        confirmIfVoice("Opening rewards.");
+        break;
+      case "repeat_instruction": {
+        const { hint, title } = lastInstructionRef.current;
+        const line = hint ? `${title ? `${title}. ` : ""}${hint}` : "Pick a quest on the map to hear a game instruction.";
+        speak(line);
+        break;
+      }
+      case "show_coins": {
+        const n = profile.coins;
+        speak(`You have ${n} Bota Coins.`);
+        setCoinFlash(`🪙 ${n} Bota Coins`);
+        window.setTimeout(() => setCoinFlash(null), 4500);
+        break;
+      }
+      case "open_parent_mode":
+        setView("parent-pin");
+        confirmIfVoice("Opening parent mode. A grown-up will need the PIN.");
+        break;
+      case "enable_large_text":
+        setProfile((p) => {
+          if (!p) return p;
+          return {
+            ...p,
+            adaptiveProfile: {
+              ...p.adaptiveProfile,
+              settings: { ...p.adaptiveProfile.settings, largeText: true },
+            },
+          };
+        });
+        confirmIfVoice("Large text is on.");
+        break;
+      default:
+        break;
+    }
+    setOpen(false);
+  };
+
+  const chips: { cmd: VoiceCommand; label: string }[] = [
+    { cmd: "open_map", label: "Open map" },
+    { cmd: "open_words_game", label: "Open word game" },
+    { cmd: "open_rewards", label: "Open rewards" },
+    { cmd: "repeat_instruction", label: "Repeat instruction" },
+    { cmd: "show_coins", label: "How many coins?" },
+    { cmd: "open_parent_mode", label: "Call parent" },
+    { cmd: "enable_large_text", label: "Turn on large text" },
+  ];
+
+  return (
+    <div className={`voice-guide-root ${showChildHub ? "voice-guide-root--hub" : ""}`}>
+      {open && (
+        <div className="voice-guide-panel" id="voice-guide-panel" role="dialog" aria-label="Bota Voice Guide">
+          <div className="voice-guide-panel-head">
+            <strong>Bota Voice Guide</strong>
+            <button type="button" className="voice-guide-close" onClick={() => setOpen(false)} aria-label="Close voice guide">
+              ✕
+            </button>
+          </div>
+          <p className="voice-guide-lead">Tap a command. Everything works with buttons — voice is optional.</p>
+          <div className="voice-guide-chips">
+            {chips.map(({ cmd, label }) => (
+              <button key={cmd} type="button" className="voice-guide-chip" onClick={() => run(cmd)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {coinFlash && <p className="voice-guide-status" role="status">{coinFlash}</p>}
+        </div>
+      )}
+      <button
+        type="button"
+        className="voice-guide-fab"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="voice-guide-panel"
+        aria-label="Open Bota Voice Guide"
+      >
+        🐫
+      </button>
+    </div>
   );
 }
 
@@ -850,7 +1042,17 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
   );
 }
 
-function MemoryGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: () => void; onSpeak: (text: string) => void }) {
+function MemoryGame({
+  accessibility,
+  onDone,
+  onSpeak,
+  onRegisterInstruction,
+}: {
+  accessibility: AccessibilitySettings;
+  onDone: () => void;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+}) {
   const [flipped, setFlipped] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -869,7 +1071,13 @@ function MemoryGame({ accessibility, onDone, onSpeak }: { accessibility: Accessi
   }, [matched, onDone]);
 
   return (
-    <GameShell title="Collect the Sweets" hint="Flip two cards and find every matching pair." accessibility={accessibility} onSpeak={onSpeak}>
+    <GameShell
+      title="Collect the Sweets"
+      hint="Flip two cards and find every matching pair."
+      accessibility={accessibility}
+      onSpeak={onSpeak}
+      onRegisterInstruction={onRegisterInstruction}
+    >
       <div className="memory-grid">
         {memoryDeck.map((card, index) => {
           const visible = flipped.includes(index) || matched.includes(index);
@@ -881,7 +1089,17 @@ function MemoryGame({ accessibility, onDone, onSpeak }: { accessibility: Accessi
   );
 }
 
-function WordsGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+function WordsGame({
+  accessibility,
+  onDone,
+  onSpeak,
+  onRegisterInstruction,
+}: {
+  accessibility: AccessibilitySettings;
+  onDone: (score: number) => void;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -902,7 +1120,13 @@ function WordsGame({ accessibility, onDone, onSpeak }: { accessibility: Accessib
   };
 
   return (
-    <GameShell title="Find the Kazakh Word" hint="Choose the Kazakh word that matches the picture." accessibility={accessibility} onSpeak={onSpeak}>
+    <GameShell
+      title="Find the Kazakh Word"
+      hint="Choose the Kazakh word that matches the picture."
+      accessibility={accessibility}
+      onSpeak={onSpeak}
+      onRegisterInstruction={onRegisterInstruction}
+    >
       <div className="question-card">
         <div className="big-icon">{question.icon}</div>
         <h3>{question.prompt}</h3>
@@ -913,7 +1137,19 @@ function WordsGame({ accessibility, onDone, onSpeak }: { accessibility: Accessib
   );
 }
 
-function MathGame({ age, accessibility, onDone, onSpeak }: { age: Age; accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+function MathGame({
+  age,
+  accessibility,
+  onDone,
+  onSpeak,
+  onRegisterInstruction,
+}: {
+  age: Age;
+  accessibility: AccessibilitySettings;
+  onDone: (score: number) => void;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+}) {
   const questions = useMemo(() => makeMathQuestions(age), [age]);
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -931,7 +1167,7 @@ function MathGame({ age, accessibility, onDone, onSpeak }: { age: Age; accessibi
   };
 
   return (
-    <GameShell title="Counting with Bota" hint="Pick the correct answer." accessibility={accessibility} onSpeak={onSpeak}>
+    <GameShell title="Counting with Bota" hint="Pick the correct answer." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="question-card"><h3>{question.prompt}</h3></div>
       {accessibility.gestureAnswerMode && (
         <div className="gesture-box">
@@ -949,7 +1185,17 @@ function MathGame({ age, accessibility, onDone, onSpeak }: { age: Age; accessibi
   );
 }
 
-function PatternGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+function PatternGame({
+  accessibility,
+  onDone,
+  onSpeak,
+  onRegisterInstruction,
+}: {
+  accessibility: AccessibilitySettings;
+  onDone: (score: number) => void;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -970,7 +1216,7 @@ function PatternGame({ accessibility, onDone, onSpeak }: { accessibility: Access
   };
 
   return (
-    <GameShell title="Pattern Caravan" hint="Find what comes next in the pattern." accessibility={accessibility} onSpeak={onSpeak}>
+    <GameShell title="Pattern Caravan" hint="Find what comes next in the pattern." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
       <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
       {feedback && <p className="feedback">{feedback}</p>}
@@ -978,7 +1224,17 @@ function PatternGame({ accessibility, onDone, onSpeak }: { accessibility: Access
   );
 }
 
-function CultureGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+function CultureGame({
+  accessibility,
+  onDone,
+  onSpeak,
+  onRegisterInstruction,
+}: {
+  accessibility: AccessibilitySettings;
+  onDone: (score: number) => void;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -999,7 +1255,7 @@ function CultureGame({ accessibility, onDone, onSpeak }: { accessibility: Access
   };
 
   return (
-    <GameShell title="Culture Match" hint="Match Kazakhstan places with the right fact." accessibility={accessibility} onSpeak={onSpeak}>
+    <GameShell title="Culture Match" hint="Match Kazakhstan places with the right fact." accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="question-card culture-card">
         <div className="big-icon">🧭</div>
         <h3>{question.prompt}</h3>
@@ -1010,7 +1266,25 @@ function CultureGame({ accessibility, onDone, onSpeak }: { accessibility: Access
   );
 }
 
-function GameShell({ title, hint, accessibility, onSpeak, children }: { title: string; hint: string; accessibility: AccessibilitySettings; onSpeak: (text: string) => void; children: React.ReactNode }) {
+function GameShell({
+  title,
+  hint,
+  accessibility,
+  onSpeak,
+  onRegisterInstruction,
+  children,
+}: {
+  title: string;
+  hint: string;
+  accessibility: AccessibilitySettings;
+  onSpeak: (text: string) => void;
+  onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    onRegisterInstruction?.({ title, hint });
+  }, [title, hint, onRegisterInstruction]);
+
   return (
     <section className="screen">
       <p className="eyebrow">Educational quest</p>
@@ -1370,6 +1644,7 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
     ["highContrast", "High Contrast"],
     ["textHints", "Text Hints"],
     ["voiceInstructions", "Voice Instructions"],
+    ["botaVoiceGuide", "Bota Voice Guide"],
     ["noTimer", "No Timer"],
     ["reducedAnimations", "Reduced Animations"],
     ["gestureAnswerMode", "Gesture Answer Mode"],
