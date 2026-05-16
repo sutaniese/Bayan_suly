@@ -400,6 +400,7 @@ function App() {
           {profile && view === "parent" && (
             <ParentDashboard
               profile={profile}
+              onChange={(next) => setProfile(next)}
               onAlbum={() => setView("album")}
               onGarden={() => setView("garden")}
               onSettings={() => setView("accessibility")}
@@ -1989,6 +1990,7 @@ function ParentSummaryCard({
 
 function ParentDashboard({
   profile,
+  onChange,
   onAlbum,
   onGarden,
   onSettings,
@@ -1996,6 +1998,7 @@ function ParentDashboard({
   onReset,
 }: {
   profile: UserProfile;
+  onChange: (profile: UserProfile) => void;
   onAlbum: () => void;
   onGarden: () => void;
   onSettings: () => void;
@@ -2005,6 +2008,67 @@ function ParentDashboard({
   const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
   const [confirmReset, setConfirmReset] = useState(false);
   const sp = profile.skillProgress;
+
+  const needs = profile.adaptiveProfile.supportNeeds;
+  const settings = profile.adaptiveProfile.settings;
+  const summary = profile.adaptiveProfile.recommendationSummary;
+
+  const needLabels: Record<SupportNeed, string> = {
+    vision: "Better visibility",
+    hearing: "Text instead of sound",
+    motor: "Easier touch controls",
+    focus: "Calm focus mode",
+    standard: "Standard mode",
+  };
+
+  const setupSourceLabel: Record<UserProfile["adaptiveProfile"]["setupSource"], string> = {
+    manual: "Manual setup",
+    default: "Skipped / standard",
+    mock_document: "Sample recommendation (demo)",
+  };
+
+  const adaptiveActive = useMemo(() => {
+    const labels = [
+      settings.largeText ? "Large text" : null,
+      settings.largeButtons ? "Large buttons" : null,
+      settings.highContrast ? "High contrast" : null,
+      settings.voiceInstructions ? "Voice instructions" : null,
+      settings.textHints ? "Text hints" : null,
+      settings.noTimer ? "No timer" : null,
+      settings.reducedAnimations ? "Reduced animations" : null,
+      settings.simplifiedInstructions ? "Simpler instructions" : null,
+      settings.gestureAnswerMode ? "Gesture Answer Mode (mock)" : null,
+    ].filter((x): x is string => Boolean(x));
+    const active = labels.length > 0;
+    return { active, labels };
+  }, [settings]);
+
+  const toggleSetting = (key: keyof AccessibilitySettings) => {
+    const nextSettings = { ...settings, [key]: !settings[key] };
+    onChange({
+      ...profile,
+      adaptiveProfile: {
+        ...profile.adaptiveProfile,
+        settings: nextSettings,
+        recommendationSummary: buildRecommendationSummary(needs, nextSettings),
+      },
+    });
+  };
+
+  const resetToStandard = () => {
+    const cleanNeeds: SupportNeed[] = ["standard"];
+    const nextSettings = buildAccessibilitySettings(cleanNeeds);
+    onChange({
+      ...profile,
+      adaptiveProfile: {
+        ...profile.adaptiveProfile,
+        supportNeeds: cleanNeeds,
+        setupSource: "manual",
+        settings: nextSettings,
+        recommendationSummary: buildRecommendationSummary(cleanNeeds, nextSettings),
+      },
+    });
+  };
   return (
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
@@ -2031,6 +2095,58 @@ function ParentDashboard({
         <strong>Sticker album</strong>
         <p>{profile.unlockedStickers.length}/{STICKERS.length} stickers collected</p>
         <button onClick={onAlbum}>Open Sticker Album</button>
+      </div>
+      <div className="panel">
+        <strong>Adaptive Profile</strong>
+        <p className="lead">
+          Comfort profile: <b>{adaptiveActive.active ? "Active" : "Off"}</b> · Source: <b>{setupSourceLabel[profile.adaptiveProfile.setupSource]}</b>
+        </p>
+        <strong>Selected support needs</strong>
+        <p>{needs.length ? needs.map((n) => needLabels[n] ?? n).join(" · ") : "Standard mode"}</p>
+
+        {adaptiveActive.labels.length > 0 && (
+          <>
+            <strong>Enabled</strong>
+            <p>{adaptiveActive.labels.join(" · ")}</p>
+          </>
+        )}
+
+        {summary.length > 0 && (
+          <>
+            <strong>Recommendation summary</strong>
+            <ul className="recommendation-list">
+              {summary.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <strong>Quick toggles</strong>
+        <div className="toggle-list">
+          {(
+            [
+              ["largeText", "Large Text"],
+              ["largeButtons", "Large Buttons"],
+              ["highContrast", "High Contrast"],
+              ["voiceInstructions", "Voice Instructions"],
+              ["textHints", "Text Hints"],
+              ["noTimer", "No Timer"],
+              ["reducedAnimations", "Reduced Animations"],
+              ["simplifiedInstructions", "Simpler instructions"],
+              ["gestureAnswerMode", "Gesture Answer Mode"],
+            ] as const
+          ).map(([key, label]) => (
+            <label className="toggle" key={key}>
+              <span>{label}</span>
+              <input type="checkbox" checked={Boolean(settings[key])} onChange={() => toggleSetting(key)} />
+            </label>
+          ))}
+        </div>
+        <div className="cta-row">
+          <button className="primary" type="button" onClick={onSettings}>Edit settings</button>
+          <button type="button" onClick={resetToStandard}>Reset to Standard</button>
+        </div>
       </div>
       <div className="cta-row">
         <button className="primary" onClick={onSettings}>♿ Learning Comfort Profile</button>
@@ -2064,6 +2180,7 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
       },
     });
   const items: [keyof AccessibilitySettings, string][] = [
+    ["largeText", "Large Text"],
     ["largeButtons", "Large Buttons"],
     ["highContrast", "High Contrast"],
     ["textHints", "Text Hints"],
