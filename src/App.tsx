@@ -1247,6 +1247,7 @@ function WordsGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
+  const [active, setActive] = useState(0);
   const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = wordQuestions[index];
 
@@ -1257,6 +1258,10 @@ function WordsGame({
 
   const readOptionAloud = accessibility.voiceInstructions && (accessibility.largeText || accessibility.highContrast);
   const hearingText = accessibility.subtitles || accessibility.textHints;
+
+  useEffect(() => {
+    setActive(0);
+  }, [index, options.length]);
 
   const answer = (option: string) => {
     const ok = option === question.answer;
@@ -1285,10 +1290,34 @@ function WordsGame({
         <h3>{question.prompt}</h3>
         {hearingText && <p className="word-prompt-text">Pick the Kazakh word that matches the picture. Everything is written — no sound required.</p>}
       </div>
+      {accessibility.gestureAnswerMode && options.length > 0 && (
+        <div className="gesture-box">
+          <strong>Gesture Mode mock</strong>
+          <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
+          <div className="cta-row">
+            <button type="button" onClick={() => setActive((active + 1) % options.length)}>👉 Next</button>
+            <button type="button" onClick={() => onSpeak(WORDS_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button
+              type="button"
+              onClick={() => {
+                const opt = options[active];
+                if (!opt) return;
+                answer(opt);
+              }}
+            >
+              👍 Select {options[active]}
+            </button>
+          </div>
+        </div>
+      )}
       <div className={`answers answers--words${accessibility.extraLargeTouchTargets ? " answers--xlarge" : ""}`}>
-        {options.map((option) => (
+        {options.map((option, optionIndex) => (
           <div className="answer-with-audio" key={option}>
-            <button type="button" className="answer-main" onClick={() => answer(option)}>
+            <button
+              type="button"
+              className={`answer-main ${optionIndex === active ? "active-answer" : ""}`}
+              onClick={() => answer(option)}
+            >
               {option}
             </button>
             {readOptionAloud && (
@@ -1462,8 +1491,13 @@ function PatternGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
+  const [active, setActive] = useState(0);
   const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = patternQuestions[index];
+
+  useEffect(() => {
+    setActive(0);
+  }, [index, question.options.length]);
 
   const answer = (option: string) => {
     const ok = option === question.answer;
@@ -1482,7 +1516,26 @@ function PatternGame({
   return (
     <GameShell title="Pattern Caravan" instruction={PATTERN_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
-      <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
+      {accessibility.gestureAnswerMode && question.options.length > 0 && (
+        <div className="gesture-box">
+          <strong>Gesture Mode mock</strong>
+          <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
+          <div className="cta-row">
+            <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
+            <button type="button" onClick={() => onSpeak(PATTERN_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button type="button" onClick={() => answer(question.options[active]!)}>
+              👍 Select {question.options[active]}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="answers">
+        {question.options.map((option, optionIndex) => (
+          <button key={option} type="button" className={optionIndex === active ? "active-answer" : ""} onClick={() => answer(option)}>
+            {option}
+          </button>
+        ))}
+      </div>
       {lastOk !== null ? (
         <QuestAnswerFeedback
           outcome={lastOk ? "correct" : "wrong"}
@@ -1509,8 +1562,13 @@ function CultureGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
+  const [active, setActive] = useState(0);
   const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = cultureQuestions[index];
+
+  useEffect(() => {
+    setActive(0);
+  }, [index, question.options.length]);
 
   const answer = (option: string) => {
     const ok = option === question.answer;
@@ -1532,7 +1590,26 @@ function CultureGame({
         <div className="big-icon">🧭</div>
         <h3>{question.prompt}</h3>
       </div>
-      <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
+      {accessibility.gestureAnswerMode && question.options.length > 0 && (
+        <div className="gesture-box">
+          <strong>Gesture Mode mock</strong>
+          <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
+          <div className="cta-row">
+            <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
+            <button type="button" onClick={() => onSpeak(CULTURE_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button type="button" onClick={() => answer(question.options[active]!)}>
+              👍 Select {question.options[active]}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="answers">
+        {question.options.map((option, optionIndex) => (
+          <button key={option} type="button" className={optionIndex === active ? "active-answer" : ""} onClick={() => answer(option)}>
+            {option}
+          </button>
+        ))}
+      </div>
       {lastOk !== null ? (
         <QuestAnswerFeedback
           outcome={lastOk ? "correct" : "wrong"}
