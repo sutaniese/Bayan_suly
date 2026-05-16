@@ -896,27 +896,29 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
       <div className="desktop-map-layout">
         <div className="kazakhstan-map" aria-label="Interactive Kazakhstan quest map">
           <img className="real-map" src="/assets/kazakhstan-map.svg" alt="Map of Kazakhstan" />
-          {locations.map((location) => {
-            const unlocked = profile.unlockedLocations.includes(location.id);
-            const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
-            return (
-              <button
-                key={location.id}
-                className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
-                disabled={!unlocked}
-                style={{ left: `${location.x}%`, top: `${location.y}%` }}
-                onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}
-                aria-label={`${location.city}: ${location.title}`}
-              >
-                <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
-                <span className="pin-label">
-                  <strong>{location.city}</strong>
-                  <small>{location.title}</small>
-                  <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
-                </span>
-              </button>
-            );
-          })}
+          <div className="map-overlay" aria-hidden="true">
+            {locations.map((location) => {
+              const unlocked = profile.unlockedLocations.includes(location.id);
+              const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
+              return (
+                <button
+                  key={location.id}
+                  className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
+                  disabled={!unlocked}
+                  style={{ left: `${location.x}%`, top: `${location.y}%` }}
+                  onClick={() => (location.gameId ? onGo(location.gameId) : onGo("secret"))}
+                  aria-label={`${location.city}: ${location.title}`}
+                >
+                  <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
+                  <span className="pin-label">
+                    <strong>{location.city}</strong>
+                    <small>{location.title}</small>
+                    <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <p className="map-credit">Map: Wikimedia Commons, Incall, CC BY-SA 4.0</p>
         </div>
         <aside className="quest-panel">

@@ -599,6 +599,16 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   filter: drop-shadow(0 12px 24px rgba(0,0,0,0.1));
 }
 
+.map-overlay {
+  position: absolute;
+  inset: 5% 4% 10%;
+  width: 92%;
+  height: 85%;
+  z-index: 1;
+}
+
+.map-overlay .map-pin { z-index: 1; }
+
 .map-credit {
   position: absolute;
   left: 1rem;
