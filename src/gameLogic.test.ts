@@ -8,6 +8,7 @@ import {
   applyQrItemScan,
   applyQrUnlock,
   buildAccessibilitySettings,
+  buildRecommendationSummary,
   makeMathQuestions,
   makeProfile,
   mergeSkillProgress,
@@ -29,6 +30,16 @@ describe("game reward rules", () => {
     expect(combined.noTimer).toBe(true);
     expect(combined.reducedAnimations).toBe(true);
     expect(combined.soundRequired).toBe(false);
+  });
+
+  it("builds a recommendation summary for selected needs", () => {
+    const standardSettings = buildAccessibilitySettings(["standard"]);
+    expect(buildRecommendationSummary(["standard"], standardSettings)).toEqual([]);
+
+    const settings = buildAccessibilitySettings(["vision", "motor"]);
+    const summary = buildRecommendationSummary(["vision", "motor"], settings).join(" ");
+    expect(summary).toContain("Large text");
+    expect(summary).toContain("Buttons");
   });
 
   it("awards completion and bonus coins once per game", () => {

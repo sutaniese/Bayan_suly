@@ -284,6 +284,39 @@ export function buildAccessibilitySettings(needs: SupportNeed[]): AccessibilityS
   return out;
 }
 
+export function buildRecommendationSummary(needs: SupportNeed[], settings: AccessibilitySettings): string[] {
+  const uniq = Array.from(new Set(needs));
+  const clean = uniq.length ? uniq : (["standard"] as SupportNeed[]);
+  const onlyStandard = clean.length === 1 && clean[0] === "standard";
+  if (onlyStandard || !settings.enabled) return [];
+
+  const lines: string[] = [];
+
+  if (settings.largeText && settings.highContrast) lines.push("Large text and high contrast enabled for better visibility.");
+  else if (settings.largeText) lines.push("Large text enabled to make reading easier.");
+  else if (settings.highContrast) lines.push("High contrast enabled to improve readability.");
+
+  if (settings.voiceInstructions || settings.botaVoiceGuide) {
+    lines.push("Voice instructions and Bota Voice Guide enabled (audio is optional).");
+  }
+
+  if (settings.subtitles) lines.push("Subtitles and text hints enabled so learning never depends only on sound.");
+
+  if (settings.noTimer) lines.push("Timers removed to reduce pressure.");
+
+  if (settings.largeButtons || settings.extraLargeTouchTargets) lines.push("Buttons enlarged for easier interaction.");
+
+  if (settings.reducedAnimations) lines.push("Reduced animations enabled for a calmer experience.");
+
+  if (settings.simplifiedInstructions || settings.oneTaskAtATime || settings.fewerAnswerOptions) {
+    lines.push("Instructions simplified and tasks made less overwhelming.");
+  }
+
+  if (settings.gestureAnswerMode) lines.push("Gesture Answer Mode available as a non-precise touch fallback.");
+
+  return lines;
+}
+
 function capSkillValue(value: number) {
   return Math.min(100, Math.max(0, value));
 }
