@@ -360,10 +360,100 @@ h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: 0; }
   box-shadow: 0 18px 32px rgba(25, 116, 72, 0.22);
 }
 .reward-list, .toggle-list, .stats { display: grid; gap: 0.75rem; }
-.reward { display: grid; gap: 0.55rem; opacity: 0.72; background: linear-gradient(180deg, #fffdfa, #fff3cf); }
-.reward-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
-.reward-head span {
-  flex: 0 0 auto;
+.rewards-screen { gap: 1.2rem; }
+.rewards-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 1rem;
+  align-items: stretch;
+}
+.coin-wallet {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.15rem;
+  border-radius: 24px;
+  padding: 1.1rem;
+  color: #fff;
+  background: linear-gradient(145deg, #e97032, #b44721);
+  box-shadow: 0 18px 34px rgba(200, 79, 36, 0.24);
+}
+.coin-wallet span { font-size: 3rem; line-height: 1; font-weight: 950; }
+.coin-wallet strong { font-size: 1rem; }
+.coin-wallet small { color: rgba(255, 255, 255, 0.84); font-weight: 800; }
+.rewards-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+}
+.featured-coupon, .next-reward-card, .reward-card, .danger-zone {
+  border: 1px solid rgba(31, 42, 36, 0.1);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(35, 42, 35, 0.08);
+}
+.featured-coupon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.1rem;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 215, 111, 0.55), transparent 18rem),
+    linear-gradient(145deg, #ffffff, #fff2d0);
+}
+.featured-coupon p { color: #5c655e; line-height: 1.45; }
+.coupon-ticket {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  min-height: 190px;
+  padding: 1rem;
+  border-radius: 20px;
+  background: repeating-linear-gradient(135deg, #f3e9ff 0 12px, #ffffff 12px 24px);
+  border: 2px dashed #7c62b2;
+  overflow: hidden;
+}
+.coupon-ticket::before, .coupon-ticket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff2d0;
+  transform: translateY(-50%);
+}
+.coupon-ticket::before { left: -14px; }
+.coupon-ticket::after { right: -14px; }
+.coupon-ticket span { color: #7c62b2; font-weight: 950; }
+.coupon-ticket strong { font-size: 1.3rem; }
+.coupon-ticket small { color: #5f546d; line-height: 1.35; }
+.coupon-ticket:not(.unlocked) { filter: grayscale(0.55); opacity: 0.78; }
+.next-reward-card { display: grid; align-content: center; gap: 0.75rem; padding: 1rem; }
+.reward-progress { height: 12px; border-radius: 999px; overflow: hidden; background: #eee5d2; }
+.reward-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #69b36e, #197448); }
+.reward-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.reward-card {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 250px;
+  padding: 1rem;
+  align-content: start;
+}
+.reward-card.locked { opacity: 0.68; }
+.reward-card.available { border-color: rgba(25, 116, 72, 0.28); background: linear-gradient(180deg, #ffffff, #f2ffed); }
+.reward-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.reward-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #fff0ce;
+  font-size: 1.6rem;
+}
+.reward-cost {
   border-radius: 999px;
   padding: 0.28rem 0.55rem;
   background: #1f2a24;
@@ -371,7 +461,15 @@ h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: 0; }
   font-size: 0.78rem;
   font-weight: 950;
 }
-.reward.available { opacity: 1; border-color: rgba(25, 116, 72, 0.35); }
+.reward-card p { color: #5c655e; line-height: 1.42; }
+.reward-state {
+  margin-top: auto;
+  border-radius: 999px;
+  padding: 0.45rem 0.65rem;
+  background: #edf7e6;
+  color: #197448;
+  font-size: 0.84rem;
+}
 .coupon { display: grid; gap: 0.45rem; border-radius: 12px; background: #f5f0ff; padding: 0.75rem; border: 2px dashed #7c62b2; }
 .coupon b { font-size: 1.05rem; }
 .coupon em { font-size: 0.82rem; color: #5f546d; }
@@ -400,6 +498,22 @@ h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: 0; }
   padding: 0.75rem 0.85rem;
 }
 .toggle input { width: 28px; min-height: 28px; }
+.danger-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  background: #fff7f3;
+  border-color: rgba(184, 66, 38, 0.2);
+}
+.danger-zone p { color: #7b5d52; line-height: 1.4; }
+.secondary-danger { color: #a33f25; background: #fff; border: 1px solid rgba(163, 63, 37, 0.22); }
+.danger {
+  color: #fff;
+  background: linear-gradient(135deg, #c6452a, #8f2618);
+}
+.reset-actions { display: flex; gap: 0.55rem; }
 .qr {
   width: 150px;
   height: 150px;
@@ -440,6 +554,9 @@ h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: 0; }
   .app { padding: 0; }
   .phone { min-height: 100vh; border-radius: 0; border: 0; }
   .desktop-map-layout { grid-template-columns: 1fr; }
+  .rewards-hero, .rewards-layout, .featured-coupon { grid-template-columns: 1fr; }
+  .reward-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .danger-zone { grid-template-columns: 1fr; }
   .kazakhstan-map { min-height: 520px; }
   .map-hero { grid-template-columns: 1fr; }
 }
@@ -450,6 +567,9 @@ h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: 0; }
   .map-pin { width: 46px; min-height: 46px; }
   .pin-icon { width: 46px; height: 46px; border-radius: 16px 16px 16px 5px; }
   .quest-panel .cta-row { grid-template-columns: 1fr; }
+  .reward-grid { grid-template-columns: 1fr; }
+  .coin-wallet { justify-items: start; }
+  .reset-actions { flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -165,6 +165,13 @@ function App() {
     setProfile(applyQrUnlock(profile));
   };
 
+  const resetProgress = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setProfile(null);
+    setResult(null);
+    setView("onboarding");
+  };
+
   const speak = (text: string) => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -186,9 +193,9 @@ function App() {
         {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} />}
-        {profile && view === "rewards" && <RewardsShop profile={profile} />}
+        {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onParent={() => setView("parent-pin")} />}
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
-        {profile && view === "parent" && <ParentDashboard profile={profile} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} />}
+        {profile && view === "parent" && <ParentDashboard profile={profile} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
         {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
         {profile && view === "qr" && <QrUnlock profile={profile} onUnlock={unlockQr} onSecret={() => setView("secret")} />}
         {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
@@ -506,23 +513,68 @@ function ResultScreen({ result, onMap, onRewards }: { result: GameResult; onMap:
   );
 }
 
-function RewardsShop({ profile }: { profile: UserProfile }) {
+function RewardsShop({ profile, onMap, onParent }: { profile: UserProfile; onMap: () => void; onParent: () => void }) {
+  const unlockedRewards = rewards.filter((reward) => reward.type === "qr_bonus" ? profile.unlockedLocations.includes("secret") : profile.coins >= reward.cost);
+  const nextReward = rewards.find((reward) => reward.cost > profile.coins && reward.type !== "qr_bonus");
+  const couponReward = rewards.find((reward) => reward.id === "coupon");
+  const couponUnlocked = Boolean(couponReward && profile.coins >= couponReward.cost);
+  const progress = nextReward ? Math.min(100, Math.round((profile.coins / nextReward.cost) * 100)) : 100;
+
   return (
-    <section className="screen">
-      <p className="eyebrow">Rewards shop</p>
-      <h2>{profile.coins} Bota Coins</h2>
-      <p className="lead">Learning progress turns into concept rewards parents can understand.</p>
-      <div className="reward-list">
+    <section className="screen rewards-screen">
+      <div className="rewards-hero">
+        <div>
+          <p className="eyebrow">Rewards shop</p>
+          <h2>Turn learning into Bota rewards</h2>
+          <p className="lead">Coins are earned only from quests. Rewards are concept coupons and badges for the demo.</p>
+        </div>
+        <div className="coin-wallet">
+          <span>{profile.coins}</span>
+          <strong>Bota Coins</strong>
+          <small>{unlockedRewards.length}/{rewards.length} rewards available</small>
+        </div>
+      </div>
+
+      <div className="rewards-layout">
+        <section className="featured-coupon">
+          <div>
+            <p className="eyebrow">Featured coupon</p>
+            <h3>100 KZT Bota product coupon</h3>
+            <p>{couponUnlocked ? "Ready to show to a parent." : `${Math.max(0, 100 - profile.coins)} more coins to unlock this coupon.`}</p>
+          </div>
+          <div className={`coupon-ticket ${couponUnlocked ? "unlocked" : ""}`}>
+            <span>BOTA</span>
+            <strong>{couponUnlocked ? "BOTA-LEARN-100" : "LOCKED"}</strong>
+            <small>Concept only. Real cashier/POS integration is a future step.</small>
+            <button disabled={!couponUnlocked} onClick={onParent}>Show to Parent</button>
+          </div>
+        </section>
+
+        <aside className="next-reward-card">
+          <p className="eyebrow">Next unlock</p>
+          <h3>{nextReward ? nextReward.title : "All coin rewards unlocked"}</h3>
+          <div className="reward-progress"><span style={{ width: `${progress}%` }} /></div>
+          <p>{nextReward ? `${profile.coins}/${nextReward.cost} coins` : "Keep playing for badges and practice."}</p>
+          <button onClick={onMap}>Earn More Coins</button>
+        </aside>
+      </div>
+
+      <div className="reward-grid">
         {rewards.map((reward) => {
           const unlocked = reward.type === "qr_bonus" ? profile.unlockedLocations.includes("secret") : profile.coins >= reward.cost;
+          const missing = Math.max(0, reward.cost - profile.coins);
           return (
-            <article className={`reward ${unlocked ? "available" : ""}`} key={reward.id}>
-              <div className="reward-head">
-                <strong>{reward.title}</strong>
-                <span>{reward.cost ? `${reward.cost} coins` : "QR only"}</span>
+            <article className={`reward-card ${unlocked ? "available" : "locked"}`} key={reward.id}>
+              <div className="reward-card-top">
+                <span className="reward-icon">{reward.type === "badge" ? "🏅" : reward.type === "qr_bonus" ? "✨" : "🎟️"}</span>
+                <span className="reward-cost">{reward.cost ? `${reward.cost} coins` : "QR only"}</span>
               </div>
+              <h3>{reward.title}</h3>
               <p>{reward.description}</p>
-              {reward.code && unlocked && <div className="coupon"><b>{reward.code}</b><small>{reward.discount}</small><button>Show to Parent</button><em>Concept only. Real cashier/POS integration is a future step.</em></div>}
+              <div className="reward-state">
+                <strong>{unlocked ? "Available" : reward.type === "qr_bonus" ? "Scan package" : `${missing} coins needed`}</strong>
+              </div>
+              {reward.code && unlocked && <div className="coupon"><b>{reward.code}</b><small>{reward.discount}</small><button onClick={onParent}>Show to Parent</button><em>Concept only. Real cashier/POS integration is a future step.</em></div>}
             </article>
           );
         })}
@@ -545,8 +597,9 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ParentDashboard({ profile, onSettings, onQr }: { profile: UserProfile; onSettings: () => void; onQr: () => void }) {
+function ParentDashboard({ profile, onSettings, onQr, onReset }: { profile: UserProfile; onSettings: () => void; onQr: () => void; onReset: () => void }) {
   const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
+  const [confirmReset, setConfirmReset] = useState(false);
   return (
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
@@ -568,6 +621,20 @@ function ParentDashboard({ profile, onSettings, onQr }: { profile: UserProfile; 
       <div className="cta-row">
         <button className="primary" onClick={onSettings}>Qolaily Settings</button>
         <button onClick={onQr}>QR Unlock</button>
+      </div>
+      <div className="danger-zone">
+        <div>
+          <strong>Reset demo progress</strong>
+          <p>Clears local coins, badges, completed games, QR unlock, and profile data on this device.</p>
+        </div>
+        {confirmReset ? (
+          <div className="reset-actions">
+            <button className="danger" onClick={onReset}>Confirm Reset</button>
+            <button onClick={() => setConfirmReset(false)}>Cancel</button>
+          </div>
+        ) : (
+          <button className="secondary-danger" onClick={() => setConfirmReset(true)}>Reset Progress</button>
+        )}
       </div>
     </section>
   );
