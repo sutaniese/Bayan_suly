@@ -23,6 +23,8 @@ export type UserProfile = {
   awardedEvents: string[];
 };
 
+export const CORE_LOCATION_IDS = ["almaty", "turkestan", "astana", "karaganda", "shymkent"];
+
 export const defaultAccessibility: AccessibilitySettings = {
   largeButtons: false,
   highContrast: false,
@@ -40,7 +42,7 @@ export function makeProfile(name: string, age: Age, language: Language): UserPro
     language,
     coins: 0,
     completedGames: [],
-    unlockedLocations: ["almaty", "turkestan", "astana"],
+    unlockedLocations: CORE_LOCATION_IDS,
     badges: [],
     accessibility: defaultAccessibility,
     awardedEvents: [],

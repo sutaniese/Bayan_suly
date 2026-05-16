@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyGameAward, applyQrUnlock, makeMathQuestions, makeProfile } from "./gameLogic";
+import { CORE_LOCATION_IDS, applyGameAward, applyQrUnlock, makeMathQuestions, makeProfile } from "./gameLogic";
 
 describe("game reward rules", () => {
   it("awards completion and bonus coins once per game", () => {
@@ -27,5 +27,9 @@ describe("game reward rules", () => {
     expect(makeMathQuestions(7)[0].answer).toBe(5);
     expect(makeMathQuestions(9)[0].answer).toBe(9);
     expect(makeMathQuestions(11)[0].answer).toBe(12);
+  });
+
+  it("starts with five playable learning locations", () => {
+    expect(makeProfile("Amina", 8, "kz").unlockedLocations).toEqual(CORE_LOCATION_IDS);
   });
 });

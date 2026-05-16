@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { applyGameAward, applyQrUnlock, defaultAccessibility, makeMathQuestions, makeProfile } from "./gameLogic";
+import { CORE_LOCATION_IDS, applyGameAward, applyQrUnlock, defaultAccessibility, makeMathQuestions, makeProfile } from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, UserProfile } from "./gameLogic";
 
 type View =
@@ -8,6 +8,8 @@ type View =
   | "memory"
   | "words"
   | "math"
+  | "patterns"
+  | "culture"
   | "result"
   | "rewards"
   | "parent-pin"
@@ -15,7 +17,7 @@ type View =
   | "accessibility"
   | "qr"
   | "secret";
-type Skill = "memory" | "math" | "language" | "culture";
+type Skill = "memory" | "math" | "language" | "culture" | "logic";
 
 type GameResult = {
   gameId: string;
@@ -54,6 +56,8 @@ const locations: Location[] = [
   { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️" },
   { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌" },
   { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️" },
+  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷" },
+  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒" },
   { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", locked: true },
 ];
 
@@ -97,6 +101,18 @@ const wordQuestions = [
 ];
 
 const memoryDeck = ["🍬", "🍫", "🍭", "🐫"].flatMap((card) => [card, card]);
+
+const patternQuestions = [
+  { sequence: ["🍬", "🍫", "🍬", "🍫", "?"], answer: "🍬", options: ["🍬", "🍭", "🐫"], rule: "The sweets alternate." },
+  { sequence: ["1", "2", "4", "7", "?"], answer: "11", options: ["9", "10", "11"], rule: "Add 1, then 2, then 3, then 4." },
+  { sequence: ["🔴", "🔵", "🔵", "🔴", "🔵", "🔵", "?"], answer: "🔴", options: ["🔴", "🔵", "🟡"], rule: "One red, then two blue repeats." },
+];
+
+const cultureQuestions = [
+  { prompt: "Which place is famous for Baiterek?", answer: "Astana", options: ["Astana", "Almaty", "Turkestan"], fact: "Baiterek is a landmark in Astana." },
+  { prompt: "Which city is known for mountains nearby?", answer: "Almaty", options: ["Shymkent", "Almaty", "Karaganda"], fact: "Almaty sits near the Ile Alatau mountains." },
+  { prompt: "Which city is linked with the Mausoleum of Khoja Ahmed Yasawi?", answer: "Turkestan", options: ["Turkestan", "Astana", "Atyrau"], fact: "Turkestan is one of Kazakhstan's historic cultural centers." },
+];
 
 function loadProfile(): UserProfile | null {
   try {
@@ -165,6 +181,8 @@ function App() {
         {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" })} onSpeak={speak} />}
         {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0)} onSpeak={speak} />}
+        {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+        {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} />}
         {profile && view === "rewards" && <RewardsShop profile={profile} />}
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
@@ -226,15 +244,15 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
 }
 
 function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View) => void }) {
-  const completedCount = profile.completedGames.length;
+  const completedCount = locations.filter((location) => location.gameId && profile.completedGames.includes(location.gameId)).length;
   return (
     <section className="screen">
       <p className="eyebrow">Kazakhstan map</p>
       <h2>Choose a quest, {profile.name}</h2>
       <div className="guide-card">
         <div className="guide-avatar">🐫</div>
-        <p>Bota is ready. Complete all three learning quests, then scan a package to unlock the secret stop.</p>
-        <strong>{completedCount}/3 quests complete</strong>
+        <p>Bota is ready. Complete learning quests across Kazakhstan, then scan a package to unlock the secret stop.</p>
+        <strong>{completedCount}/{CORE_LOCATION_IDS.length} quests complete</strong>
       </div>
       <div className="map">
         {locations.map((location) => {
@@ -359,6 +377,67 @@ function MathGame({ age, accessibility, onDone, onSpeak }: { age: Age; accessibi
   );
 }
 
+function PatternGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const question = patternQuestions[index];
+
+  const answer = (option: string) => {
+    const ok = option === question.answer;
+    const nextCorrect = correct + (ok ? 1 : 0);
+    setCorrect(nextCorrect);
+    setFeedback(`${ok ? "Correct" : "Try again"}. ${question.rule}`);
+    window.setTimeout(() => {
+      if (index === patternQuestions.length - 1) onDone(Math.round((nextCorrect / patternQuestions.length) * 100));
+      else {
+        setIndex(index + 1);
+        setFeedback("");
+      }
+    }, 850);
+  };
+
+  return (
+    <GameShell title="Pattern Caravan" hint="Find what comes next in the pattern." accessibility={accessibility} onSpeak={onSpeak}>
+      <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
+      <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
+      {feedback && <p className="feedback">{feedback}</p>}
+    </GameShell>
+  );
+}
+
+function CultureGame({ accessibility, onDone, onSpeak }: { accessibility: AccessibilitySettings; onDone: (score: number) => void; onSpeak: (text: string) => void }) {
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const question = cultureQuestions[index];
+
+  const answer = (option: string) => {
+    const ok = option === question.answer;
+    const nextCorrect = correct + (ok ? 1 : 0);
+    setCorrect(nextCorrect);
+    setFeedback(`${ok ? "Correct" : "Good try"}. ${question.fact}`);
+    window.setTimeout(() => {
+      if (index === cultureQuestions.length - 1) onDone(Math.round((nextCorrect / cultureQuestions.length) * 100));
+      else {
+        setIndex(index + 1);
+        setFeedback("");
+      }
+    }, 850);
+  };
+
+  return (
+    <GameShell title="Culture Match" hint="Match Kazakhstan places with the right fact." accessibility={accessibility} onSpeak={onSpeak}>
+      <div className="question-card culture-card">
+        <div className="big-icon">🧭</div>
+        <h3>{question.prompt}</h3>
+      </div>
+      <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
+      {feedback && <p className="feedback">{feedback}</p>}
+    </GameShell>
+  );
+}
+
 function GameShell({ title, hint, accessibility, onSpeak, children }: { title: string; hint: string; accessibility: AccessibilitySettings; onSpeak: (text: string) => void; children: React.ReactNode }) {
   return (
     <section className="screen">
@@ -429,7 +508,7 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function ParentDashboard({ profile, onSettings, onQr }: { profile: UserProfile; onSettings: () => void; onQr: () => void }) {
-  const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math" })[game] ?? game);
+  const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
   return (
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
