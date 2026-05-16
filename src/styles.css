@@ -992,6 +992,109 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   outline: 3px dashed rgba(142, 36, 170, 0.75);
   outline-offset: 3px;
 }
+
+/* Phase 9 — multimodal feedback (text + icon + border state; motion optional) */
+.multimodal-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-left-width: 6px;
+  background: var(--bg-card, #fff);
+  font-weight: 800;
+  max-width: 32rem;
+  margin: 0.5rem auto 0;
+  width: 100%;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+.multimodal-feedback--correct {
+  border-left-color: #388e3c;
+  background: linear-gradient(90deg, rgba(56, 142, 60, 0.14), rgba(255, 255, 255, 0.96) 58%);
+}
+
+.multimodal-feedback--wrong {
+  border-left-color: #f57c00;
+  background: linear-gradient(90deg, rgba(245, 124, 0, 0.14), rgba(255, 255, 255, 0.96) 58%);
+}
+
+.multimodal-feedback--reward {
+  border-left-color: #ffb300;
+  background: linear-gradient(90deg, rgba(255, 193, 7, 0.22), rgba(255, 255, 255, 0.96) 58%);
+}
+
+.multimodal-feedback--notice {
+  border-left-color: #5c6bc0;
+  background: linear-gradient(90deg, rgba(92, 107, 192, 0.16), rgba(255, 255, 255, 0.96) 58%);
+}
+
+.multimodal-feedback__headline {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.multimodal-feedback__detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-muted, #5d4037);
+  line-height: 1.35;
+}
+
+.multimodal-feedback__icon {
+  font-size: 1.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.multimodal-feedback__body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.multimodal-feedback__voice {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 1.25rem;
+  background: #e3f2fd;
+  border: 2px solid rgba(33, 150, 243, 0.28);
+}
+
+.multimodal-feedback__voice:hover {
+  border-color: var(--accent-orange);
+}
+
+@keyframes multimodal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.multimodal-feedback--motion {
+  animation: multimodal-pop 0.45s ease-out;
+}
+
+.high-contrast .multimodal-feedback {
+  border-width: 3px;
+  border-color: #000;
+}
+
+.result-reward-row {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0.75rem auto 0;
+}
 .badge { background: linear-gradient(135deg, #FFF8E1, #FFF3C4); border: 2px solid rgba(255, 193, 7, 0.3); }
 
 .big-icon { font-size: 4.5rem; text-align: center; }

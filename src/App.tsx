@@ -41,6 +41,7 @@ import type {
   UserProfile,
 } from "./gameLogic";
 import { cancelGroqPlayback, tryPlayGroqSpeech } from "./groqTts";
+import { GentleNotice, QuestAnswerFeedback, RewardEarnedBanner } from "./multimodalFeedback";
 
 type VoiceCommand =
   | "open_map"
@@ -383,6 +384,7 @@ function App() {
             <ResultScreen
               result={result}
               accessibility={profile.adaptiveProfile.settings}
+              onSpeak={speak}
               onMap={() => setView("map")}
               onRewards={() => setView("rewards")}
               onAlbum={() => setView("album")}
@@ -392,7 +394,9 @@ function App() {
           {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
           {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
           {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
-          {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
+          {profile && view === "parent-pin" && (
+            <ParentPin accessibility={profile.adaptiveProfile.settings} onSpeak={speak} onSuccess={() => setView("parent")} />
+          )}
           {profile && view === "parent" && (
             <ParentDashboard
               profile={profile}
@@ -1032,7 +1036,12 @@ function DailyChest({
       {opened ? (
         <>
           <div className="daily-reward">
-            <div className="coin-earned">🪙 +{reward.coins}</div>
+            <RewardEarnedBanner
+              coins={reward.coins}
+              extraLine={rewardSticker ? `Plus a sticker: ${rewardSticker.title}.` : "Keep collecting facts about Kazakhstan."}
+              accessibility={profile.adaptiveProfile.settings}
+              onSpeak={onSpeak}
+            />
             {rewardSticker && (
               <div className="sticker-pill">{rewardSticker.imageEmoji} {rewardSticker.title}</div>
             )}
@@ -1136,6 +1145,7 @@ function MemoryGame({
   const [flipped, setFlipped] = useState<number[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
+  const [mismatchFlash, setMismatchFlash] = useState(false);
 
   const largeCards = accessibility.largeText || accessibility.extraLargeTouchTargets || accessibility.largeButtons;
 
@@ -1143,7 +1153,17 @@ function MemoryGame({
     setFlipped([]);
     setMatched([]);
     setMoves(0);
+    setMismatchFlash(false);
   }, [pairCount]);
+
+  useEffect(() => {
+    if (flipped.length !== 2) {
+      if (flipped.length === 0) setMismatchFlash(false);
+      return;
+    }
+    const [a, b] = flipped;
+    setMismatchFlash(deck[a] !== deck[b]);
+  }, [flipped, deck]);
 
   useEffect(() => {
     if (flipped.length !== 2) return;
@@ -1199,6 +1219,14 @@ function MemoryGame({
           );
         })}
       </div>
+      {mismatchFlash ? (
+        <GentleNotice
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+          headline="Different cards"
+          detail="No worries — they flip back so you can try another pair."
+        />
+      ) : null}
       <p className="status">
         🎯 Moves: {moves} · Matches: {matched.length / 2}/{pairCount}
       </p>
@@ -1219,7 +1247,6 @@ function WordsGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
-  const [feedback, setFeedback] = useState("");
   const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = wordQuestions[index];
 
@@ -1236,12 +1263,10 @@ function WordsGame({
     setLastOk(ok);
     const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
-    setFeedback(ok ? `Correct. ${question.fact}` : `Try again. ${question.fact}`);
     window.setTimeout(() => {
       if (index === wordQuestions.length - 1) onDone(Math.round((nextCorrect / wordQuestions.length) * 100));
       else {
         setIndex(index + 1);
-        setFeedback("");
         setLastOk(null);
       }
     }, 700);
@@ -1274,15 +1299,15 @@ function WordsGame({
           </div>
         ))}
       </div>
-      {feedback && (
-        <p
-          className={`feedback${accessibility.visualFeedback ? (lastOk ? " feedback--ok" : " feedback--miss") : ""}`}
-          role="status"
-        >
-          {accessibility.visualFeedback && <span className="feedback-icon" aria-hidden>{lastOk ? "✅ " : "✖️ "}</span>}
-          {feedback}
-        </p>
-      )}
+      {lastOk !== null ? (
+        <QuestAnswerFeedback
+          outcome={lastOk ? "correct" : "wrong"}
+          headline={lastOk ? "Correct!" : "Try again"}
+          detail={lastOk ? question.fact : `Here is a hint: ${question.fact}`}
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+        />
+      ) : null}
     </GameShell>
   );
 }
@@ -1306,6 +1331,7 @@ function MathGame({
   const [correct, setCorrect] = useState(0);
   const [active, setActive] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
+  const [answerFlash, setAnswerFlash] = useState<null | { ok: boolean; detail: string }>(null);
   const question = questions[index];
   const focusMath = accessibility.fewerAnswerOptions || accessibility.oneTaskAtATime;
   const readProblemAloud = accessibility.voiceInstructions && (accessibility.largeText || accessibility.highContrast);
@@ -1315,6 +1341,7 @@ function MathGame({
     setCorrect(0);
     setActive(0);
     setPicked(null);
+    setAnswerFlash(null);
   }, [age, mathSettingsKey]);
 
   const advance = (nextCorrect: number) => {
@@ -1327,9 +1354,23 @@ function MathGame({
   };
 
   const submitAnswer = (option: number) => {
-    const nextCorrect = correct + (option === question.answer ? 1 : 0);
+    const ok = option === question.answer;
+    const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
-    advance(nextCorrect);
+    const hintLine = mathStepHintForQuestion(question.prompt);
+    if (ok) {
+      setAnswerFlash({ ok: true, detail: "Nice counting — next step is on the way!" });
+      window.setTimeout(() => {
+        setAnswerFlash(null);
+        advance(nextCorrect);
+      }, 420);
+    } else {
+      setAnswerFlash({ ok: false, detail: `Here is a hint: ${hintLine}` });
+      window.setTimeout(() => {
+        setAnswerFlash(null);
+        advance(nextCorrect);
+      }, 780);
+    }
   };
 
   const pickOption = (option: number) => {
@@ -1383,6 +1424,15 @@ function MathGame({
           </button>
         </div>
       )}
+      {answerFlash ? (
+        <QuestAnswerFeedback
+          outcome={answerFlash.ok ? "correct" : "wrong"}
+          headline={answerFlash.ok ? "Correct!" : "Try again"}
+          detail={answerFlash.detail}
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+        />
+      ) : null}
       <div className={`answers${accessibility.extraLargeTouchTargets ? " answers--xlarge" : ""}`}>
         {question.options.map((option, optionIndex) => (
           <button
@@ -1412,19 +1462,19 @@ function PatternGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
-  const [feedback, setFeedback] = useState("");
+  const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = patternQuestions[index];
 
   const answer = (option: string) => {
     const ok = option === question.answer;
+    setLastOk(ok);
     const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
-    setFeedback(`${ok ? "Correct" : "Try again"}. ${question.rule}`);
     window.setTimeout(() => {
       if (index === patternQuestions.length - 1) onDone(Math.round((nextCorrect / patternQuestions.length) * 100));
       else {
         setIndex(index + 1);
-        setFeedback("");
+        setLastOk(null);
       }
     }, 850);
   };
@@ -1433,7 +1483,15 @@ function PatternGame({
     <GameShell title="Pattern Caravan" instruction={PATTERN_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
       <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
       <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
-      {feedback && <p className="feedback">{feedback}</p>}
+      {lastOk !== null ? (
+        <QuestAnswerFeedback
+          outcome={lastOk ? "correct" : "wrong"}
+          headline={lastOk ? "Correct!" : "Try again"}
+          detail={lastOk ? question.rule : `Here is a hint: ${question.rule}`}
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+        />
+      ) : null}
     </GameShell>
   );
 }
@@ -1451,19 +1509,19 @@ function CultureGame({
 }) {
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
-  const [feedback, setFeedback] = useState("");
+  const [lastOk, setLastOk] = useState<boolean | null>(null);
   const question = cultureQuestions[index];
 
   const answer = (option: string) => {
     const ok = option === question.answer;
+    setLastOk(ok);
     const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
-    setFeedback(`${ok ? "Correct" : "Good try"}. ${question.fact}`);
     window.setTimeout(() => {
       if (index === cultureQuestions.length - 1) onDone(Math.round((nextCorrect / cultureQuestions.length) * 100));
       else {
         setIndex(index + 1);
-        setFeedback("");
+        setLastOk(null);
       }
     }, 850);
   };
@@ -1475,7 +1533,15 @@ function CultureGame({
         <h3>{question.prompt}</h3>
       </div>
       <div className="answers">{question.options.map((option) => <button key={option} onClick={() => answer(option)}>{option}</button>)}</div>
-      {feedback && <p className="feedback">{feedback}</p>}
+      {lastOk !== null ? (
+        <QuestAnswerFeedback
+          outcome={lastOk ? "correct" : "wrong"}
+          headline={lastOk ? "Correct!" : "Good try"}
+          detail={lastOk ? question.fact : `Here is a hint: ${question.fact}`}
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+        />
+      ) : null}
     </GameShell>
   );
 }
@@ -1538,6 +1604,7 @@ function GameShell({
 function ResultScreen({
   result,
   accessibility,
+  onSpeak,
   onMap,
   onRewards,
   onAlbum,
@@ -1545,6 +1612,7 @@ function ResultScreen({
 }: {
   result: GameResult;
   accessibility: AccessibilitySettings;
+  onSpeak: (text: string) => void;
   onMap: () => void;
   onRewards: () => void;
   onAlbum: () => void;
@@ -1555,6 +1623,7 @@ function ResultScreen({
     .map((id) => STICKERS.find((s) => s.id === id))
     .filter((s): s is (typeof STICKERS)[number] => Boolean(s));
   const showLearningFocus = !result.alreadyAwarded && Boolean(result.skillPracticeSummary);
+  const rewardExtra = great ? "Great work on this quest!" : "Every step counts — nice effort!";
   return (
     <section className="screen center result-screen">
       <div className={`celebration ${accessibility.reducedAnimations ? "celebration--static" : ""}`}>
@@ -1567,11 +1636,18 @@ function ResultScreen({
         <div className="bota-face">{great ? "🎉" : "🐫"}</div>
         <p>{result.alreadyAwarded
           ? "Great practice! You already earned coins for this quest."
-          : <><strong>+{result.coinsEarned} Bota Coins</strong> earned! Keep exploring!</>
+          : "Your quest is finished. Below is what you earned — you can read it or tap read aloud."
         }</p>
       </div>
       {!result.alreadyAwarded && result.coinsEarned > 0 && (
-        <div className={`coin-earned ${accessibility.reducedAnimations ? "coin-earned--static" : ""}`}>🪙 +{result.coinsEarned}</div>
+        <div className="result-reward-row">
+          <RewardEarnedBanner
+            coins={result.coinsEarned}
+            extraLine={rewardExtra}
+            accessibility={accessibility}
+            onSpeak={onSpeak}
+          />
+        </div>
       )}
       {showLearningFocus && (
         <p className="result-learning-focus">
@@ -1685,7 +1761,15 @@ function RewardsShop({
   );
 }
 
-function ParentPin({ onSuccess }: { onSuccess: () => void }) {
+function ParentPin({
+  accessibility,
+  onSpeak,
+  onSuccess,
+}: {
+  accessibility: AccessibilitySettings;
+  onSpeak: (text: string) => void;
+  onSuccess: () => void;
+}) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   return (
@@ -1694,8 +1778,15 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
       <h2>🔒 Enter PIN</h2>
       <p className="lead">This area is for grown-ups only.</p>
       <input className="pin" inputMode="numeric" value={pin} onChange={(event) => setPin(event.target.value)} placeholder="1234" />
-      {error && <p className="feedback">{error}</p>}
-      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Wrong PIN. Try 1234 for the MVP demo.")}>Unlock 🔓</button>
+      {error ? (
+        <GentleNotice
+          accessibility={accessibility}
+          onSpeak={onSpeak}
+          headline="That PIN did not match"
+          detail={error}
+        />
+      ) : null}
+      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Try 1234 for the MVP demo — no penalty, just try again.")}>Unlock 🔓</button>
     </section>
   );
 }
