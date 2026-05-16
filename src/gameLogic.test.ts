@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CORE_LOCATION_IDS, applyGameAward, applyQrUnlock, makeMathQuestions, makeProfile } from "./gameLogic";
+import {
+  CORE_LOCATION_IDS,
+  DAILY_CHEST_REWARD,
+  applyDailyChest,
+  applyGameAward,
+  applyQrUnlock,
+  makeMathQuestions,
+  makeProfile,
+} from "./gameLogic";
 
 describe("game reward rules", () => {
   it("awards completion and bonus coins once per game", () => {
@@ -21,6 +29,18 @@ describe("game reward rules", () => {
     expect(first.coins).toBe(15);
     expect(first.unlockedLocations).toContain("secret");
     expect(second.coins).toBe(15);
+  });
+
+  it("opens daily chest once per day", () => {
+    const today = "2026-05-16";
+    const first = applyDailyChest(makeProfile("Amina", 8, "kz"), today);
+    const second = applyDailyChest(first.profile, today);
+
+    expect(first.coinsEarned).toBe(DAILY_CHEST_REWARD.coins);
+    expect(first.profile.coins).toBe(DAILY_CHEST_REWARD.coins);
+    expect(first.profile.openedDailyChestDates).toContain(today);
+    expect(second.coinsEarned).toBe(0);
+    expect(second.profile.coins).toBe(DAILY_CHEST_REWARD.coins);
   });
 
   it("uses age-based math difficulty", () => {

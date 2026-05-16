@@ -139,6 +139,53 @@ export function updateUserProfile(updater: (profile: UserProfile) => UserProfile
   saveUserProfile(next);
 }
 
+export type DailyChestReward = {
+  coins: number;
+  fact: string;
+  stickerId?: string;
+  stickerTitle?: string;
+  stickerEmoji?: string;
+};
+
+export const DAILY_CHEST_REWARD: DailyChestReward = {
+  coins: 10,
+  fact: "Baiterek is one of the most famous symbols of Astana.",
+  stickerId: "sticker-baiterek",
+  stickerTitle: "Baiterek Sticker",
+  stickerEmoji: "🏙️",
+};
+
+export function applyDailyChest(profile: UserProfile, date: string, reward: DailyChestReward = DAILY_CHEST_REWARD) {
+  const alreadyOpened = profile.openedDailyChestDates.includes(date);
+  if (alreadyOpened) {
+    return {
+      profile,
+      alreadyOpened,
+      coinsEarned: 0,
+      stickerUnlocked: false,
+      reward,
+    };
+  }
+
+  const stickerUnlocked = reward.stickerId ? !profile.unlockedStickers.includes(reward.stickerId) : false;
+  const unlockedStickers = reward.stickerId
+    ? Array.from(new Set([...profile.unlockedStickers, reward.stickerId]))
+    : profile.unlockedStickers;
+
+  return {
+    profile: {
+      ...profile,
+      coins: profile.coins + reward.coins,
+      openedDailyChestDates: Array.from(new Set([...profile.openedDailyChestDates, date])),
+      unlockedStickers,
+    },
+    alreadyOpened: false,
+    coinsEarned: reward.coins,
+    stickerUnlocked,
+    reward,
+  };
+}
+
 export function applyGameAward(profile: UserProfile, gameId: string, badge: string | undefined, baseCoins = 20, bonus = 10) {
   const eventId = `game:${gameId}`;
   const alreadyAwarded = profile.awardedEvents.includes(eventId);

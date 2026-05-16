@@ -459,6 +459,108 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 
 .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 
+.daily-chest-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, #FFF8E1, #FFF3C4);
+  border: 2px solid rgba(255, 193, 7, 0.25);
+  box-shadow: var(--shadow-card);
+}
+
+.daily-chest-content {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.daily-chest-icon {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #FFF2B3;
+  font-size: 1.6rem;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+}
+
+.daily-chest-icon.opened {
+  background: #C8E6C9;
+}
+
+.daily-caption {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.daily-status {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 900;
+  background: #FFF0C2;
+  color: #B26A00;
+}
+
+.daily-status.opened {
+  background: #E8F5E9;
+  color: var(--accent-green-deep);
+}
+
+.daily-chest-screen {
+  gap: 1.1rem;
+}
+
+.daily-chest-hero {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+}
+
+.daily-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.sticker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-pill);
+  background: #FFF;
+  border: 2px solid rgba(255, 193, 7, 0.3);
+  font-weight: 900;
+  color: #A86100;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.08);
+}
+
+.fact-card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  background: #E3F2FD;
+  border: 2px solid rgba(66, 165, 245, 0.2);
+  font-weight: 700;
+  color: var(--text-main);
+}
+
 .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; }
 
 .memory-card {
@@ -798,13 +900,16 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .screen, .high-contrast .topbar { background: #0a0a0a; color: #fff; }
 .high-contrast .panel, .high-contrast .reward, .high-contrast .question-card,
 .high-contrast .stats span, .high-contrast .toggle, .high-contrast input,
-.high-contrast select, .high-contrast .guide-card, .high-contrast .bota-bubble {
+.high-contrast select, .high-contrast .guide-card, .high-contrast .bota-bubble,
+.high-contrast .daily-chest-card, .high-contrast .fact-card, .high-contrast .sticker-pill {
   background: #111; color: #fff; border-color: #fff;
 }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,
 .high-contrast em, .high-contrast .brand-lockup span { color: var(--accent-yellow); }
 .high-contrast button { background: var(--accent-yellow); color: #000; }
 .high-contrast .primary { background: #fff; color: #000; }
+.high-contrast .daily-status { background: #fff; color: #000; }
+.high-contrast .daily-status.opened { background: #fff; color: #000; }
 .high-contrast button:focus-visible, .high-contrast input:focus-visible,
 .high-contrast select:focus-visible { outline-color: #fff; }
 
@@ -843,6 +948,9 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   .map-pin { width: 48px; min-height: 48px; }
   .pin-icon { width: 48px; height: 48px; }
   .quest-panel .cta-row { grid-template-columns: 1fr; }
+  .daily-chest-card { grid-template-columns: 1fr; text-align: center; }
+  .daily-chest-card .daily-chest-icon { margin: 0 auto; }
+  .daily-chest-card button { width: 100%; }
   .reward-grid { grid-template-columns: 1fr; }
   .coin-wallet { justify-items: start; }
   .reset-actions { flex-direction: column; }

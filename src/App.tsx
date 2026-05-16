@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CORE_LOCATION_IDS,
   STORAGE_KEY,
+  DAILY_CHEST_REWARD,
+  applyDailyChest,
   applyGameAward,
   applyQrUnlock,
   getUserProfile,
@@ -21,6 +23,7 @@ type View =
   | "culture"
   | "result"
   | "rewards"
+  | "daily-chest"
   | "parent-pin"
   | "parent"
   | "accessibility"
@@ -109,6 +112,8 @@ const wordQuestions = [
   { icon: "🌾", prompt: "Steppe", answer: "дала", options: ["дала", "алма", "түйе"], fact: "Дала means steppe." },
 ];
 
+const getToday = () => new Date().toISOString().slice(0, 10);
+
 const memoryDeck = ["🍬", "🍫", "🍭", "🐫"].flatMap((card) => [card, card]);
 
 const patternQuestions = [
@@ -179,6 +184,12 @@ function App() {
     setView("onboarding");
   };
 
+  const openDailyChest = () => {
+    if (!profile) return;
+    const update = applyDailyChest(profile, getToday());
+    setProfile(update.profile);
+  };
+
   const speak = (text: string) => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -201,6 +212,7 @@ function App() {
         {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} />}
         {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onParent={() => setView("parent-pin")} />}
+        {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
         {profile && view === "parent" && <ParentDashboard profile={profile} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
         {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
@@ -264,6 +276,8 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
 function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View) => void }) {
   const completedCount = locations.filter((location) => location.gameId && profile.completedGames.includes(location.gameId)).length;
   const nextQuest = locations.find((location) => location.gameId && !profile.completedGames.includes(location.gameId));
+  const today = getToday();
+  const chestOpened = profile.openedDailyChestDates.includes(today);
   return (
     <section className="screen map-screen">
       <div className="map-hero">
@@ -324,12 +338,96 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
               );
             })}
           </div>
+          <div className="daily-chest-card">
+            <div className="daily-chest-icon">🧰</div>
+            <div className="daily-chest-content">
+              <p className="eyebrow">Daily Chest • Күнделікті сандық</p>
+              <h3>{chestOpened ? "Chest opened today" : "Open today's chest"}</h3>
+              <p className="daily-caption">
+                {chestOpened
+                  ? `Come back tomorrow for more Bota Coins and a Kazakhstan fact.`
+                  : `Earn +${DAILY_CHEST_REWARD.coins} coins and learn a Kazakhstan fact today.`}
+              </p>
+              <div className={`daily-status ${chestOpened ? "opened" : "ready"}`}>
+                {chestOpened ? "Opened" : "Ready to open"}
+              </div>
+            </div>
+            <button className="primary" onClick={() => onGo("daily-chest")}>
+              {chestOpened ? "See reward" : "Open chest"}
+            </button>
+          </div>
           <div className="cta-row">
             <button onClick={() => onGo("qr")}>📦 Scan Package</button>
             <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
           </div>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function DailyChest({
+  profile,
+  onOpen,
+  onBack,
+  onSpeak,
+}: {
+  profile: UserProfile;
+  onOpen: () => void;
+  onBack: () => void;
+  onSpeak: (text: string) => void;
+}) {
+  const today = getToday();
+  const opened = profile.openedDailyChestDates.includes(today);
+  const reward = DAILY_CHEST_REWARD;
+
+  return (
+    <section className="screen center daily-chest-screen">
+      <div className="daily-chest-hero">
+        <div className={`daily-chest-icon ${opened ? "opened" : ""}`}>🧰</div>
+        <p className="eyebrow">Daily Chest • Күнделікті сандық</p>
+        <h2>{opened ? "Today's chest is open!" : "Open today's chest"}</h2>
+        <p className="lead">
+          {opened
+            ? "Come back tomorrow for another warm surprise."
+            : `Earn +${reward.coins} Bota Coins and learn something new about Kazakhstan.`}
+        </p>
+      </div>
+      <div className="bota-bubble">
+        <div className="bota-face">🐫</div>
+        <p>{opened ? "Great job! Here's your reward and a fun fact for today." : "Tap the button and I'll open the chest with you!"}</p>
+      </div>
+      {opened ? (
+        <>
+          <div className="daily-reward">
+            <div className="coin-earned">🪙 +{reward.coins}</div>
+            {reward.stickerTitle && (
+              <div className="sticker-pill">{reward.stickerEmoji} {reward.stickerTitle}</div>
+            )}
+          </div>
+          <div className="fact-card">
+            <strong>Kazakhstan fact</strong>
+            <p>{reward.fact}</p>
+          </div>
+          {profile.accessibility.voiceInstructions && (
+            <button onClick={() => onSpeak(reward.fact)}>🔊 Read fact aloud</button>
+          )}
+          {profile.accessibility.textHints && (
+            <p className="hint">You can open one chest per day. Come back tomorrow for another fact.</p>
+          )}
+        </>
+      ) : (
+        <>
+          {profile.accessibility.textHints && (
+            <p className="hint">Daily chests give small rewards without streak pressure.</p>
+          )}
+          {profile.accessibility.voiceInstructions && (
+            <button onClick={() => onSpeak(`Open today's chest for ${reward.coins} coins and a Kazakhstan fact.`)}>🔊 Read aloud</button>
+          )}
+          <button className="primary" onClick={onOpen}>Open chest 🎁</button>
+        </>
+      )}
+      <button onClick={onBack}>Back to Map</button>
     </section>
   );
 }
