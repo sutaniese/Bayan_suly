@@ -581,7 +581,8 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 
 .kazakhstan-map {
   position: relative;
-  min-height: 640px;
+  width: 100%;
+  aspect-ratio: 3000 / 1700;
   border-radius: var(--radius-xl);
   overflow: hidden;
   background: linear-gradient(180deg, #E3F2FD, #FFF9C4 50%, #E8F5E9);
@@ -1887,12 +1888,10 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   .rewards-hero, .rewards-layout, .featured-coupon { grid-template-columns: 1fr; }
   .reward-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .danger-zone { grid-template-columns: 1fr; }
-  .kazakhstan-map { min-height: 520px; }
   .map-hero { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .kazakhstan-map { min-height: 430px; }
   .pin-label { display: none; }
   .map-pin { width: 48px; min-height: 48px; }
   .pin-icon { width: 48px; height: 48px; }

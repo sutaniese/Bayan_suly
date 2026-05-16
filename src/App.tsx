@@ -95,8 +95,10 @@ type Location = {
   gameId?: View;
   skill: string;
   icon: string;
-  x: number;
-  y: number;
+  lat?: number;
+  lon?: number;
+  x?: number;
+  y?: number;
   locked?: boolean;
 };
 
@@ -111,13 +113,37 @@ type Reward = {
 };
 
 const locations: Location[] = [
-  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 75, y: 82 },
-  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 53, y: 81 },
-  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", x: 58, y: 35 },
-  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", x: 59, y: 50 },
-  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 57, y: 88 },
+  // City coordinates use real-world lat/lon (GeoNames/OSM-level precision) and are projected into the map.
+  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", lat: 51.1694, lon: 71.4491 },
+  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", lat: 49.8047, lon: 73.1094 },
+  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", lat: 43.2973, lon: 68.2518 },
+  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", lat: 42.3099, lon: 69.6004 },
+  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", lat: 43.2525, lon: 76.9115 },
   { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 80, y: 56, locked: true },
 ];
+
+const KZ_BOUNDS = {
+  // Approximate Kazakhstan bounds (north/south/west/east).
+  latMin: 40.57,
+  latMax: 55.44,
+  lonMin: 46.49,
+  lonMax: 87.32,
+} as const;
+
+function getLocationPositionPct(location: Location): { left: string; top: string } {
+  if (typeof location.x === "number" && typeof location.y === "number") {
+    return { left: `${location.x}%`, top: `${location.y}%` };
+  }
+
+  if (typeof location.lat !== "number" || typeof location.lon !== "number") {
+    return { left: "50%", top: "50%" };
+  }
+
+  const x = ((location.lon - KZ_BOUNDS.lonMin) / (KZ_BOUNDS.lonMax - KZ_BOUNDS.lonMin)) * 100;
+  const y = ((KZ_BOUNDS.latMax - location.lat) / (KZ_BOUNDS.latMax - KZ_BOUNDS.latMin)) * 100;
+
+  return { left: `${x}%`, top: `${y}%` };
+}
 
 const rewards: Reward[] = [
   { id: "badge", title: "Digital Badge", cost: 50, type: "badge", description: "A bright Bota progress badge." },
@@ -905,7 +931,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
                   key={location.id}
                   className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
                   disabled={!unlocked}
-                  style={{ left: `${location.x}%`, top: `${location.y}%` }}
+                  style={getLocationPositionPct(location)}
                   onClick={() => (location.gameId ? onGo(location.gameId) : onGo("secret"))}
                   aria-label={`${location.city}: ${location.title}`}
                 >
