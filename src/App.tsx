@@ -37,6 +37,8 @@ type Location = {
   gameId?: View;
   skill: string;
   icon: string;
+  x: number;
+  y: number;
   locked?: boolean;
 };
 
@@ -53,12 +55,12 @@ type Reward = {
 const STORAGE_KEY = "botaQuest:v1";
 
 const locations: Location[] = [
-  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️" },
-  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌" },
-  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️" },
-  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷" },
-  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒" },
-  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", locked: true },
+  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 61, y: 79 },
+  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 42, y: 75 },
+  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", x: 54, y: 37 },
+  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", x: 57, y: 53 },
+  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 38, y: 83 },
+  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 79, y: 58, locked: true },
 ];
 
 const rewards: Reward[] = [
@@ -254,18 +256,31 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
         <p>Bota is ready. Complete learning quests across Kazakhstan, then scan a package to unlock the secret stop.</p>
         <strong>{completedCount}/{CORE_LOCATION_IDS.length} quests complete</strong>
       </div>
-      <div className="map">
+      <div className="kazakhstan-map" aria-label="Interactive Kazakhstan quest map">
+        <div className="map-shape" aria-hidden="true">
+          <span className="map-region west">Caspian</span>
+          <span className="map-region north">Steppe</span>
+          <span className="map-region east">Altai</span>
+          <span className="map-region south">Silk Road</span>
+        </div>
         {locations.map((location) => {
           const unlocked = profile.unlockedLocations.includes(location.id);
           const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
           return (
-            <button key={location.id} className={`location ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
-              <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
-              <div>
+            <button
+              key={location.id}
+              className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
+              disabled={!unlocked}
+              style={{ left: `${location.x}%`, top: `${location.y}%` }}
+              onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}
+              aria-label={`${location.city}: ${location.title}`}
+            >
+              <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
+              <span className="pin-label">
                 <strong>{location.city}</strong>
                 <small>{location.title}</small>
-              </div>
-              <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
+                <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
+              </span>
             </button>
           );
         })}
