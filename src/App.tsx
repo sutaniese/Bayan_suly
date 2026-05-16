@@ -210,7 +210,7 @@ function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile;
       <button className="icon-button" onClick={onMap} aria-label="Map">🗺️</button>
       <div className="brand-lockup">
         <strong>Bota Quest</strong>
-        <span>UI v2 • {profile.coins} Bota Coins</span>
+        <span>🪙 {profile.coins} coins</span>
       </div>
       <div className="top-actions">
         <button className="icon-button" onClick={onRewards} aria-label="Rewards">🎁</button>
@@ -233,20 +233,22 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
   return (
     <section className="screen hero-screen">
       <div className="mascot">🐫</div>
-      <p className="eyebrow">Bayan Sulu presents</p>
       <h1>Bota Quest</h1>
-      <p className="lead">Travel across Kazakhstan, solve learning quests, and earn Bota Coins.</p>
+      <div className="bota-bubble">
+        <div className="bota-face">🐫</div>
+        <p>Hi there! I'm <strong>Bota the Camel</strong>! Let's explore Kazakhstan together, play fun learning games, and earn shiny coins!</p>
+      </div>
       <form className="panel" onSubmit={submit}>
-        <label>Child name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-        <label>Age<select value={age} onChange={(event) => setAge(Number(event.target.value) as Age)}>{[7, 8, 9, 10, 11].map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label>What's your name?<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Type your name..." /></label>
+        <label>How old are you?<select value={age} onChange={(event) => setAge(Number(event.target.value) as Age)}>{[7, 8, 9, 10, 11].map((item) => <option key={item}>{item}</option>)}</select></label>
         <fieldset>
-          <legend>Language</legend>
+          <legend>Pick your language</legend>
           <div className="segmented">
             <button type="button" className={language === "kz" ? "active" : ""} onClick={() => setLanguage("kz")}>Қазақша</button>
             <button type="button" className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>Русский</button>
           </div>
         </fieldset>
-        <button className="primary" type="submit">Start Adventure</button>
+        <button className="primary" type="submit">Let's Go! 🚀</button>
       </form>
     </section>
   );
@@ -259,9 +261,9 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
     <section className="screen map-screen">
       <div className="map-hero">
         <div>
-          <p className="eyebrow">Kazakhstan quest map</p>
-          <h2>Choose a city quest, {profile.name}</h2>
-          <p className="lead">Cities are playable learning stops. Finish quests, earn Bota Coins, then unlock the secret package route.</p>
+          <p className="eyebrow">Quest Map</p>
+          <h2>Where to next, {profile.name}?</h2>
+          <p className="lead">Each city has a learning quest waiting for you. Complete them all to become a Bota Champion!</p>
         </div>
         <div className="progress-card">
           <span>{completedCount}/{CORE_LOCATION_IDS.length}</span>
@@ -297,8 +299,10 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
         <aside className="quest-panel">
           <div className="guide-card">
             <div className="guide-avatar">🐫</div>
-            <p>Bota is ready. Pick a city pin on the map to start a quest.</p>
-            <strong>{nextQuest ? `Next: ${nextQuest.city}` : "All city quests complete"}</strong>
+            <div>
+              <p>{nextQuest ? "Tap a city on the map to start a quest!" : "Wow, you finished all city quests!"}</p>
+              <strong>{nextQuest ? `Try next: ${nextQuest.city}` : "🎉 All city quests complete!"}</strong>
+            </div>
           </div>
           <div className="quest-list">
             {locations.map((location) => {
@@ -314,8 +318,8 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             })}
           </div>
           <div className="cta-row">
-            <button onClick={() => onGo("qr")}>Scan Bota Package</button>
-            <button onClick={() => onGo("rewards")}>Rewards Shop</button>
+            <button onClick={() => onGo("qr")}>📦 Scan Package</button>
+            <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
           </div>
         </aside>
       </div>
@@ -349,7 +353,7 @@ function MemoryGame({ accessibility, onDone, onSpeak }: { accessibility: Accessi
           return <button key={`${card}-${index}`} className="memory-card" disabled={visible || flipped.length === 2} onClick={() => setFlipped([...flipped, index])}>{visible ? card : "?"}</button>;
         })}
       </div>
-      <p className="status">Moves: {moves}. Matches: {matched.length / 2}/4</p>
+      <p className="status">🎯 Moves: {moves} · Matches: {matched.length / 2}/4</p>
     </GameShell>
   );
 }
@@ -488,26 +492,42 @@ function GameShell({ title, hint, accessibility, onSpeak, children }: { title: s
     <section className="screen">
       <p className="eyebrow">Educational quest</p>
       <h2>{title}</h2>
-      <p className="lead">{hint}</p>
-      {accessibility.textHints && <p className="hint">Text hint: take your time. Audio is optional.</p>}
-      {accessibility.voiceInstructions && <button onClick={() => onSpeak(hint)}>Read instruction aloud</button>}
-      {accessibility.noTimer && <p className="status">No timer mode is on.</p>}
+      <div className="bota-bubble">
+        <div className="bota-face">🐫</div>
+        <p>{hint}</p>
+      </div>
+      {accessibility.textHints && <p className="hint">Take your time! There's no rush. Audio is optional.</p>}
+      {accessibility.voiceInstructions && <button onClick={() => onSpeak(hint)}>🔊 Read aloud</button>}
+      {accessibility.noTimer && <p className="status">No timer — go at your own pace!</p>}
       {children}
     </section>
   );
 }
 
 function ResultScreen({ result, onMap, onRewards }: { result: GameResult; onMap: () => void; onRewards: () => void }) {
+  const great = result.score >= 80;
   return (
     <section className="screen center">
-      <p className="eyebrow">Quest complete</p>
-      <h2>{result.title}</h2>
+      <div className="celebration">
+        <span>⭐</span><span>🌟</span><span>✨</span><span>🌟</span><span>⭐</span>
+      </div>
+      <p className="eyebrow">Quest complete!</p>
+      <h2>{great ? "Amazing job!" : "Well done!"}</h2>
       <div className="score">{result.score}%</div>
-      <p>{result.alreadyAwarded ? "You practiced again. Coins were already awarded for this quest." : `You earned ${result.coinsEarned} Bota Coins.`}</p>
-      {result.badge && <p className="badge">Badge: {result.badge}</p>}
+      <div className="bota-bubble">
+        <div className="bota-face">{great ? "🎉" : "🐫"}</div>
+        <p>{result.alreadyAwarded
+          ? "Great practice! You already earned coins for this quest."
+          : <><strong>+{result.coinsEarned} Bota Coins</strong> earned! Keep exploring!</>
+        }</p>
+      </div>
+      {!result.alreadyAwarded && result.coinsEarned > 0 && (
+        <div className="coin-earned">🪙 +{result.coinsEarned}</div>
+      )}
+      {result.badge && <p className="badge">🏅 Badge: {result.badge}</p>}
       <div className="cta-row">
-        <button className="primary" onClick={onMap}>Back to Map</button>
-        <button onClick={onRewards}>Open Rewards</button>
+        <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
+        <button onClick={onRewards}>Rewards 🎁</button>
       </div>
     </section>
   );
@@ -525,8 +545,8 @@ function RewardsShop({ profile, onMap, onParent }: { profile: UserProfile; onMap
       <div className="rewards-hero">
         <div>
           <p className="eyebrow">Rewards shop</p>
-          <h2>Turn learning into Bota rewards</h2>
-          <p className="lead">Coins are earned only from quests. Rewards are concept coupons and badges for the demo.</p>
+          <h2>Your Bota Rewards 🎁</h2>
+          <p className="lead">Play quests to earn coins and unlock cool rewards, badges, and coupons!</p>
         </div>
         <div className="coin-wallet">
           <span>{profile.coins}</span>
@@ -589,10 +609,11 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
   return (
     <section className="screen center">
       <p className="eyebrow">Parent Mode</p>
-      <h2>Enter PIN</h2>
+      <h2>🔒 Enter PIN</h2>
+      <p className="lead">This area is for grown-ups only.</p>
       <input className="pin" inputMode="numeric" value={pin} onChange={(event) => setPin(event.target.value)} placeholder="1234" />
       {error && <p className="feedback">{error}</p>}
-      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Wrong PIN. Try 1234 for the MVP demo.")}>Unlock</button>
+      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Wrong PIN. Try 1234 for the MVP demo.")}>Unlock 🔓</button>
     </section>
   );
 }
@@ -603,7 +624,7 @@ function ParentDashboard({ profile, onSettings, onQr, onReset }: { profile: User
   return (
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
-      <h2>{profile.name}'s progress</h2>
+      <h2>📊 {profile.name}'s Progress</h2>
       <div className="stats">
         <span>Age <b>{profile.age}</b></span>
         <span>Language <b>{profile.language.toUpperCase()}</b></span>
@@ -619,8 +640,8 @@ function ParentDashboard({ profile, onSettings, onQr, onReset }: { profile: User
         <p>{profile.badges.length ? profile.badges.join(", ") : "No badges yet"}</p>
       </div>
       <div className="cta-row">
-        <button className="primary" onClick={onSettings}>Qolaily Settings</button>
-        <button onClick={onQr}>QR Unlock</button>
+        <button className="primary" onClick={onSettings}>♿ Qolaily Settings</button>
+        <button onClick={onQr}>📦 QR Unlock</button>
       </div>
       <div className="danger-zone">
         <div>
@@ -654,9 +675,10 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
   return (
     <section className="screen">
       <p className="eyebrow">Qolaily Mode</p>
-      <h2>Adaptive accessibility</h2>
+      <h2>♿ Accessibility Settings</h2>
+      <p className="lead">Make the app comfortable for every child.</p>
       <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.accessibility[key]} onChange={() => set(key)} /></label>)}</div>
-      <button className="primary" onClick={onBack}>Back to Parent Mode</button>
+      <button className="primary" onClick={onBack}>← Back to Parent Mode</button>
     </section>
   );
 }
@@ -666,12 +688,15 @@ function QrUnlock({ profile, onUnlock, onSecret }: { profile: UserProfile; onUnl
   return (
     <section className="screen center">
       <div className="qr">▦</div>
-      <p className="eyebrow">Scan your Bota package</p>
-      <h2>Unlock a new adventure</h2>
-      <p className="lead">{unlocked ? "Your Bota package unlocked a new adventure!" : "Real QR scanning is mocked for demo reliability."}</p>
+      <p className="eyebrow">Bota Package</p>
+      <h2>Unlock a Secret Adventure!</h2>
+      <div className="bota-bubble">
+        <div className="bota-face">🐫</div>
+        <p>{unlocked ? <><strong>Amazing!</strong> Your Bota package unlocked a secret quest!</> : "Got a Bota product? Scan the package to find a hidden adventure!"}</p>
+      </div>
       <div className="cta-row">
-        <button className="primary" onClick={onUnlock}>Simulate QR Scan</button>
-        {unlocked && <button onClick={onSecret}>Open Secret Location</button>}
+        <button className="primary" onClick={onUnlock}>📱 Scan Package</button>
+        {unlocked && <button onClick={onSecret}>🌟 Secret Quest</button>}
       </div>
     </section>
   );
@@ -680,10 +705,16 @@ function QrUnlock({ profile, onUnlock, onSecret }: { profile: UserProfile; onUnl
 function SecretLocation({ onMap }: { onMap: () => void }) {
   return (
     <section className="screen center secret-screen">
+      <div className="celebration">
+        <span>✨</span><span>🌟</span><span>⭐</span><span>🌟</span><span>✨</span>
+      </div>
       <p className="eyebrow">Secret Location</p>
-      <h2>Bota Package Adventure</h2>
-      <p className="lead">Bota packaging becomes an entry point into an educational adventure and a repeat purchase loop.</p>
-      <button className="primary" onClick={onMap}>Back to Map</button>
+      <h2>You Found It! 🗝️</h2>
+      <div className="bota-bubble">
+        <div className="bota-face">🎉</div>
+        <p><strong>Congratulations!</strong> Every Bota package opens a new learning adventure. Keep collecting and exploring!</p>
+      </div>
+      <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
     </section>
   );
 }
