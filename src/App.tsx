@@ -512,12 +512,12 @@ function App() {
               onStart={() => setView("onboarding")}
               onContinue={() => {
                 const saved = loadProfile();
-                if (saved) { setProfile(saved); setView("map"); }
+                if (saved) { setProfile({ ...saved, language: landingLang }); setView("map"); }
                 else setView("onboarding");
               }}
             />
           )}
-          {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("adaptive-profile-result"); }} />}
+          {view === "onboarding" && <Onboarding initialLanguage={landingLang} onStart={(next) => { setProfile(next); setView("adaptive-profile-result"); }} />}
           {profile && view === "adaptive-profile-result" && <AdaptiveProfileResult profile={profile} onContinue={() => setView("map")} />}
           {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
           {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
@@ -579,6 +579,7 @@ function App() {
               onAlbum={() => setView("album")}
               onGarden={() => setView("garden")}
               onPhotoFrame={() => setView("photo-frame")}
+              language={profile.language}
             />
           )}
           {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
@@ -1060,12 +1061,12 @@ function ChildHubNav({ active, onGo, onParent, lang }: { active: HubTabView; onG
   );
 }
 
-function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
+function Onboarding({ initialLanguage, onStart }: { initialLanguage: Language; onStart: (profile: UserProfile) => void }) {
   type Step = "profile" | "comfort";
   const [step, setStep] = useState<Step>("profile");
   const [name, setName] = useState("Amina");
   const [age, setAge] = useState<Age>(8);
-  const [language, setLanguage] = useState<Language>("kz");
+  const [language, setLanguage] = useState<Language>(initialLanguage);
   const [supportNeeds, setSupportNeeds] = useState<SupportNeed[]>(["standard"]);
   const [showMockRecommendation, setShowMockRecommendation] = useState(false);
   const [mockProcessing, setMockProcessing] = useState(false);
@@ -1339,17 +1340,18 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
   const nextQuest = locations.find((location) => location.gameId && !profile.completedGames.includes(location.gameId));
   const today = getToday();
   const chestOpened = profile.openedDailyChestDates.includes(today);
+  const t = (key: string) => uiStr(key, profile.language);
   return (
     <section className="screen map-screen">
       <div className="map-hero">
         <div className="map-copy">
-          <p className="eyebrow">Quest Map</p>
-          <h2>Where to next, {profile.name}?</h2>
-          <p className="lead">Each city has a learning quest waiting for you. Complete them all to become a Bota Champion!</p>
+          <p className="eyebrow">{t("open_map")}</p>
+          <h2>{t("map_title")}, {profile.name}?</h2>
+          <p className="lead">{t("map_lead")}</p>
         </div>
         <div className="progress-card">
           <span>{completedCount}/{CORE_LOCATION_IDS.length}</span>
-          <strong>quests complete</strong>
+          <strong>{t("map_quests_complete")}</strong>
         </div>
       </div>
       <div className="desktop-map-layout">
@@ -1372,7 +1374,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
                   <span className="pin-label">
                     <strong>{location.city}</strong>
                     <small>{location.title}</small>
-                    <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
+                    <em>{completed ? t("completed") : unlocked ? location.skill : t("scan_camera")}</em>
                   </span>
                 </button>
               );
@@ -1384,8 +1386,8 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
           <div className="guide-card">
             <div className="guide-avatar">🐫</div>
             <div>
-              <p>{nextQuest ? "Tap a city on the map to start a quest!" : "Wow, you finished all city quests!"}</p>
-              <strong>{nextQuest ? `Try next: ${nextQuest.city}` : "All city quests complete!"}</strong>
+              <p>{nextQuest ? t("map_tap_city") : t("map_all_done")}</p>
+              <strong>{nextQuest ? `${t("map_try_next")} ${nextQuest.city}` : t("map_all_done")}</strong>
             </div>
           </div>
           <div className="quest-list">
@@ -1396,7 +1398,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
                 <button key={location.id} className={`quest-row ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
             <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
                   <strong>{location.city}</strong>
-                  <small>{location.title}</small>
+                  <small>{completed ? t("completed") : location.title}</small>
                 </button>
               );
             })}
@@ -1404,26 +1406,26 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
           <div className="daily-chest-card">
             <div className="daily-chest-icon">🧰</div>
             <div className="daily-chest-content">
-              <p className="eyebrow">Daily Chest • Күнделікті сандық</p>
-              <h3>{chestOpened ? "Chest opened today" : "Open today's chest"}</h3>
+              <p className="eyebrow">{t("open_chest")}</p>
+              <h3>{chestOpened ? t("chest_title_done") : t("chest_title_open")}</h3>
               <p className="daily-caption">
                 {chestOpened
-                  ? `Come back tomorrow for more Bota Coins and a Kazakhstan fact.`
-                  : `Earn +${DAILY_CHEST_REWARD.coins} coins and learn a Kazakhstan fact today.`}
+                  ? t("chest_come_back")
+                  : `+${DAILY_CHEST_REWARD.coins} ${t("coins_label")} · ${t("chest_fact_label")}`}
               </p>
               <div className={`daily-status ${chestOpened ? "opened" : "ready"}`}>
-                {chestOpened ? "Opened" : "Ready to open"}
+                {chestOpened ? t("completed") : t("ready")}
               </div>
             </div>
             <button className="primary" onClick={() => onGo("daily-chest")}>
-              {chestOpened ? "See reward" : "Open chest"}
+              {chestOpened ? t("open_rewards") : t("open_chest")}
             </button>
           </div>
           <div className="cta-row">
-            <button onClick={() => onGo("garden")}>Skill Garden</button>
-            <button onClick={() => onGo("album")}>Sticker Album</button>
-            <button onClick={() => onGo("qr")}>Package Collection</button>
-            <button onClick={() => onGo("rewards")}>Rewards</button>
+            <button onClick={() => onGo("garden")}>{t("open_garden")}</button>
+            <button onClick={() => onGo("album")}>{t("open_album")}</button>
+            <button onClick={() => onGo("qr")}>{t("open_qr")}</button>
+            <button onClick={() => onGo("rewards")}>{t("open_rewards")}</button>
           </div>
         </aside>
       </div>
@@ -1435,15 +1437,16 @@ function SkillGarden({ profile, onBack }: { profile: UserProfile; onBack: () => 
   const sp = profile.skillProgress;
   const total = totalSkillProgress(sp);
   const gardenSticker = profile.unlockedStickers.includes("sticker-skill-garden");
+  const t = (key: string) => uiStr(key, profile.language);
   return (
     <section className="screen skill-garden-screen">
       <PageHeader
-        eyebrow="My Skill Garden"
-        title="Watch your skills grow"
-        lead="Each quest waters a different plant. Play games, open the daily chest, and scan packages to help them grow."
+        eyebrow={t("open_garden")}
+        title={t("garden_title")}
+        lead={t("garden_lead")}
       />
       <div className="skill-garden-total">
-        <strong>Total learning points: {total}</strong>
+        <strong>{t("garden_total")} {total}</strong>
         <small>
           {gardenSticker
             ? "You earned the Skill Garden sticker — check your album!"
@@ -1481,7 +1484,7 @@ function SkillGarden({ profile, onBack }: { profile: UserProfile; onBack: () => 
         </div>
       )}
       <button className="primary" onClick={onBack}>
-        Back to Map
+        {t("result_back_map")}
       </button>
     </section>
   );
@@ -1504,22 +1507,23 @@ function DailyChest({
   const opened = profile.openedDailyChestDates.includes(today);
   const reward = DAILY_CHEST_REWARD;
   const rewardSticker = reward.stickerId ? STICKERS.find((sticker) => sticker.id === reward.stickerId) : null;
+  const t = (key: string) => uiStr(key, profile.language);
 
   return (
     <section className="screen center daily-chest-screen">
       <div className="daily-chest-hero">
         <div className={`daily-chest-icon ${opened ? "opened" : ""}`}>🧰</div>
-        <p className="eyebrow">Daily Chest • Күнделікті сандық</p>
-        <h2>{opened ? "Today's chest is open!" : "Open today's chest"}</h2>
+        <p className="eyebrow">{t("open_chest")}</p>
+        <h2>{opened ? t("chest_title_done") : t("chest_title_open")}</h2>
         <p className="lead">
           {opened
-            ? "Come back tomorrow for another warm surprise."
-            : `Earn +${reward.coins} Bota Coins and learn something new about Kazakhstan.`}
+            ? t("chest_come_back")
+            : `+${reward.coins} ${t("coins_label")} · ${t("chest_fact_label")}`}
         </p>
       </div>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
-        <p>{opened ? "Great job! Here's your reward and a fun fact for today." : "Tap the button and I'll open the chest with you!"}</p>
+        <p>{opened ? t("chest_opened") : t("welcome_daily_chest")}</p>
       </div>
       {opened ? (
         <>
@@ -1535,7 +1539,7 @@ function DailyChest({
             )}
           </div>
           <div className="fact-card">
-            <strong>Kazakhstan fact</strong>
+            <strong>{t("chest_fact_label")}</strong>
             <p>{reward.fact}</p>
           </div>
           {profile.adaptiveProfile.settings.voiceInstructions && (
@@ -1553,7 +1557,7 @@ function DailyChest({
           {profile.adaptiveProfile.settings.voiceInstructions && (
             <button onClick={() => onSpeak(`Open today's chest for ${reward.coins} coins and a Kazakhstan fact.`)}>Read aloud</button>
           )}
-          <button className="primary" onClick={onOpen}>Open chest</button>
+          <button className="primary" onClick={onOpen}>{t("open_chest")}</button>
         </>
       )}
       {profile.currentStreak > 0 && (
@@ -1564,7 +1568,7 @@ function DailyChest({
         </div>
       )}
       <button className="primary" onClick={onTasks}>{uiStr("daily_tasks", profile.language)}</button>
-      <button onClick={onBack}>Back to Map</button>
+      <button onClick={onBack}>{t("result_back_map")}</button>
     </section>
   );
 }
@@ -1632,6 +1636,7 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
   const unlockedCount = profile.unlockedStickers.length;
   const activeSticker = activeId ? STICKERS.find((sticker) => sticker.id === activeId) : null;
   const activeUnlocked = activeSticker ? unlockedSet.has(activeSticker.id) : false;
+  const t = (key: string) => uiStr(key, profile.language);
   const detailText = activeSticker
     ? activeUnlocked
       ? activeSticker.description
@@ -1640,10 +1645,8 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
 
   return (
     <section className="screen album-screen">
-      <p className="eyebrow">My Kazakhstan Album</p>
-      <h2>My Kazakhstan Album</h2>
-      <p className="lead">Collect stickers by exploring cities, opening the daily chest, and scanning packages.</p>
-      <div className="album-progress">{unlockedCount}/{STICKERS.length} stickers collected</div>
+      <PageHeader eyebrow={t("open_album")} title={t("album_title")} lead={t("album_lead")} />
+      <div className="album-progress">{unlockedCount}/{STICKERS.length} {t("album_collected")}</div>
       <div className="album-grid">
         {STICKERS.map((sticker) => {
           const unlocked = unlockedSet.has(sticker.id);
@@ -1654,7 +1657,7 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
               onClick={() => setActiveId(sticker.id)}
             >
               <span className="sticker-emoji">{unlocked ? sticker.imageEmoji : "❔"}</span>
-              <span className="sticker-title">{unlocked ? sticker.title : "Locked"}</span>
+              <span className="sticker-title">{unlocked ? sticker.title : t("locked")}</span>
             </button>
           );
         })}
@@ -1663,7 +1666,7 @@ function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () =>
         <strong>{activeSticker ? activeSticker.title : "Sticker details"}</strong>
         <p>{detailText}</p>
       </div>
-      <button className="primary" onClick={onBack}>Back to Map</button>
+      <button className="primary" onClick={onBack}>{t("result_back_map")}</button>
     </section>
   );
 }
@@ -2242,6 +2245,7 @@ function ResultScreen({
   onAlbum,
   onGarden,
   onPhotoFrame,
+  language,
 }: {
   result: GameResult;
   accessibility: AccessibilitySettings;
@@ -2251,8 +2255,10 @@ function ResultScreen({
   onAlbum: () => void;
   onGarden: () => void;
   onPhotoFrame: () => void;
+  language: Language;
 }) {
   const great = result.score >= 80;
+  const t = (key: string) => uiStr(key, language);
   const stickerDetails = result.stickersUnlocked
     .map((id) => STICKERS.find((s) => s.id === id))
     .filter((s): s is (typeof STICKERS)[number] => Boolean(s));
@@ -2263,13 +2269,13 @@ function ResultScreen({
       <div className={`celebration ${accessibility.reducedAnimations ? "celebration--static" : ""}`}>
         <span>⭐</span><span>✨</span>
       </div>
-      <p className="eyebrow">Quest complete!</p>
-      <h2>{great ? "Amazing job!" : "Well done!"}</h2>
+      <p className="eyebrow">{t("result_quest_complete")}</p>
+      <h2>{great ? t("result_title_great") : t("result_title_ok")}</h2>
       <div className="score">{result.score}%</div>
       <div className="bota-bubble">
         <div className="bota-face">{great ? "🎉" : "🐫"}</div>
         <p>{result.alreadyAwarded
-          ? "Great practice! You already earned coins for this quest."
+          ? t("result_practice")
           : "Your quest is finished. Below is what you earned — you can read it or tap read aloud."
         }</p>
       </div>
@@ -2285,12 +2291,12 @@ function ResultScreen({
       )}
       {showLearningFocus && (
         <p className="result-learning-focus">
-          <strong>Learning focus:</strong> {result.skillPracticeSummary}
+          <strong>{t("result_learning_focus")}</strong> {result.skillPracticeSummary}
         </p>
       )}
       {!result.alreadyAwarded && stickerDetails.length > 0 && (
         <div className="result-stickers">
-          <strong>New in your album</strong>
+          <strong>{t("result_new_stickers")}</strong>
           <ul>
             {stickerDetails.map((sticker) => (
               <li key={sticker.id}>
@@ -2303,11 +2309,11 @@ function ResultScreen({
       )}
       {result.badge && <p className="badge">🏅 Badge: {result.badge}</p>}
       <div className="cta-row result-actions">
-        <button className="primary" onClick={onMap}>Back to Map</button>
-        <button onClick={onGarden}>Skill Garden</button>
-        <button onClick={onRewards}>Rewards</button>
-        <button onClick={onAlbum}>Sticker Album</button>
-        <button onClick={onPhotoFrame}>Photo with Bota</button>
+        <button className="primary" onClick={onMap}>{t("result_back_map")}</button>
+        <button onClick={onGarden}>{t("open_garden")}</button>
+        <button onClick={onRewards}>{t("open_rewards")}</button>
+        <button onClick={onAlbum}>{t("open_album")}</button>
+        <button onClick={onPhotoFrame}>{t("open_photo_frame")}</button>
       </div>
     </section>
   );
@@ -2329,23 +2335,24 @@ function RewardsShop({
   const couponReward = rewards.find((reward) => reward.id === "coupon");
   const couponUnlocked = Boolean(couponReward && profile.coins >= couponReward.cost);
   const progress = nextReward ? Math.min(100, Math.round((profile.coins / nextReward.cost) * 100)) : 100;
+  const t = (key: string) => uiStr(key, profile.language);
 
   return (
     <section className="screen rewards-screen">
       <div className="rewards-hero">
         <div>
           <PageHeader
-            eyebrow="Rewards shop"
-            title="Your Bota Rewards"
-            lead="Play quests to earn coins and unlock parent-approved rewards, badges, and conceptual coupons."
+            eyebrow={t("open_rewards")}
+            title={t("rewards_title")}
+            lead={t("rewards_lead")}
           />
           <div className="cta-row">
-            <button onClick={onAlbum}>Sticker Album</button>
+            <button onClick={onAlbum}>{t("open_album")}</button>
           </div>
         </div>
         <div className="coin-wallet">
           <span>{profile.coins}</span>
-          <strong>Bota Coins</strong>
+          <strong>{t("rewards_coins")}</strong>
           <small>{unlockedRewards.length}/{rewards.length} rewards available</small>
         </div>
       </div>
@@ -2370,7 +2377,7 @@ function RewardsShop({
           <h3>{nextReward ? nextReward.title : "All coin rewards unlocked"}</h3>
           <div className="reward-progress"><span style={{ width: `${progress}%` }} /></div>
           <p>{nextReward ? `${profile.coins}/${nextReward.cost} coins` : "Keep playing for badges and practice."}</p>
-          <button onClick={onMap}>Earn More Coins</button>
+          <button onClick={onMap}>{t("result_back_map")}</button>
         </aside>
       </div>
 
@@ -2382,7 +2389,7 @@ function RewardsShop({
             <article className={`reward-card ${unlocked ? "available" : "locked"}`} key={reward.id}>
               <div className="reward-card-top">
                 <span className="reward-icon">{reward.type === "badge" ? "🏅" : reward.type === "qr_bonus" ? "✨" : "🎟️"}</span>
-                <span className="reward-cost">{reward.cost ? `${reward.cost} coins` : "QR only"}</span>
+                <span className="reward-cost">{reward.cost ? `${reward.cost} ${t("coins_label")}` : "QR"}</span>
               </div>
               <h3>{reward.title}</h3>
               <p>{reward.description}</p>

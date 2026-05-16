@@ -2900,7 +2900,7 @@ h3 {
   }
 
   .top-actions .lang-switch {
-    display: none;
+    display: flex;
   }
 }
 
