@@ -499,7 +499,7 @@ function App() {
 
   return (
     <main className={className}>
-      <div className={`phone ${showChildHub ? "phone--with-hub" : ""}`}>
+      <div className={`phone ${showChildHub ? "phone--with-hub" : ""} ${view === "landing" ? "phone--landing" : ""}`}>
         <div className="phone-body">
           {profile && view !== "onboarding" && view !== "landing" && (
             <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} onLangChange={(l) => setProfile((p) => p ? { ...p, language: l } : p)} />
@@ -1013,6 +1013,16 @@ function TopBar({ profile, onMap, onRewards, onParent, onLangChange }: { profile
   );
 }
 
+function PageHeader({ eyebrow, title, lead, center = false }: { eyebrow: string; title: string; lead?: string; center?: boolean }) {
+  return (
+    <div className={`page-header ${center ? "page-header--center" : ""}`}>
+      <p className="eyebrow">{eyebrow}</p>
+      <h2>{title}</h2>
+      {lead ? <p className="lead">{lead}</p> : null}
+    </div>
+  );
+}
+
 type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest" | "daily-tasks" | "photo-frame" | "leaderboard";
 
 function ChildHubNav({ active, onGo, onParent, lang }: { active: HubTabView; onGo: (view: View) => void; onParent: () => void; lang: Language }) {
@@ -1112,7 +1122,7 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
   const t = (k: string) => uiStr(k, language);
 
   return (
-    <section className="screen hero-screen">
+    <section className={`screen hero-screen ${step === "comfort" ? "comfort-screen" : "onboarding-screen"}`}>
       <div className="mascot">🐫</div>
       <h1>Bota Quest</h1>
       <div className="bota-bubble">
@@ -1120,7 +1130,7 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
         <p>{t("onb_intro")}</p>
       </div>
       {step === "profile" ? (
-        <form className="panel" onSubmit={nextFromProfile}>
+        <form className="panel onboarding-card" onSubmit={nextFromProfile}>
           <label>
             {t("onb_whats_name")}
             <input value={name} onChange={(event) => setName(event.target.value)} placeholder="..." />
@@ -1167,7 +1177,7 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
             const summary = buildRecommendationSummary(normalizedNeeds, settings);
             if (!summary.length) return null;
             return (
-              <div className="panel">
+              <div className="panel comfort-summary-card">
                 <strong>What will change</strong>
                 <ul className="recommendation-list">
                   {summary.map((line) => (
@@ -1280,10 +1290,13 @@ function AdaptiveProfileResult({ profile, onContinue }: { profile: UserProfile; 
   ].filter((x): x is string => Boolean(x));
 
   return (
-    <section className="screen center">
-      <p className="eyebrow">Adaptive profile</p>
-      <h2>Botara is ready for {profile.name}.</h2>
-      <p className="lead">We adjusted the app to make learning more comfortable. You can change these settings anytime in Parent Mode.</p>
+    <section className="screen center adaptive-ready-screen">
+      <PageHeader
+        eyebrow="Adaptive profile"
+        title={`Botara is ready for ${profile.name}.`}
+        lead="We adjusted the app to make learning more comfortable. You can change these settings anytime in Parent Mode."
+        center
+      />
 
       <div className="panel adaptive-result-panel">
         <strong>Selected support needs</strong>
@@ -1315,7 +1328,7 @@ function AdaptiveProfileResult({ profile, onContinue }: { profile: UserProfile; 
       </div>
 
       <button className="primary" onClick={onContinue}>
-        Continue to the map 🗺️
+        Continue to the map
       </button>
     </section>
   );
@@ -1329,7 +1342,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
   return (
     <section className="screen map-screen">
       <div className="map-hero">
-        <div>
+        <div className="map-copy">
           <p className="eyebrow">Quest Map</p>
           <h2>Where to next, {profile.name}?</h2>
           <p className="lead">Each city has a learning quest waiting for you. Complete them all to become a Bota Champion!</p>
@@ -1372,7 +1385,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             <div className="guide-avatar">🐫</div>
             <div>
               <p>{nextQuest ? "Tap a city on the map to start a quest!" : "Wow, you finished all city quests!"}</p>
-              <strong>{nextQuest ? `Try next: ${nextQuest.city}` : "🎉 All city quests complete!"}</strong>
+              <strong>{nextQuest ? `Try next: ${nextQuest.city}` : "All city quests complete!"}</strong>
             </div>
           </div>
           <div className="quest-list">
@@ -1381,7 +1394,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
               const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
               return (
                 <button key={location.id} className={`quest-row ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
-                  <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
+            <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
                   <strong>{location.city}</strong>
                   <small>{location.title}</small>
                 </button>
@@ -1407,10 +1420,10 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             </button>
           </div>
           <div className="cta-row">
-            <button onClick={() => onGo("garden")}>🌱 Skill Garden</button>
-            <button onClick={() => onGo("album")}>📔 Sticker Album</button>
-            <button onClick={() => onGo("qr")}>📦 Package Collection</button>
-            <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
+            <button onClick={() => onGo("garden")}>Skill Garden</button>
+            <button onClick={() => onGo("album")}>Sticker Album</button>
+            <button onClick={() => onGo("qr")}>Package Collection</button>
+            <button onClick={() => onGo("rewards")}>Rewards</button>
           </div>
         </aside>
       </div>
@@ -1424,9 +1437,11 @@ function SkillGarden({ profile, onBack }: { profile: UserProfile; onBack: () => 
   const gardenSticker = profile.unlockedStickers.includes("sticker-skill-garden");
   return (
     <section className="screen skill-garden-screen">
-      <p className="eyebrow">My Skill Garden</p>
-      <h2>Watch your skills grow 🌱</h2>
-      <p className="lead">Each quest waters a different plant. Play games, open the daily chest, and scan packages to help them grow!</p>
+      <PageHeader
+        eyebrow="My Skill Garden"
+        title="Watch your skills grow"
+        lead="Each quest waters a different plant. Play games, open the daily chest, and scan packages to help them grow."
+      />
       <div className="skill-garden-total">
         <strong>Total learning points: {total}</strong>
         <small>
@@ -1466,7 +1481,7 @@ function SkillGarden({ profile, onBack }: { profile: UserProfile; onBack: () => 
         </div>
       )}
       <button className="primary" onClick={onBack}>
-        ← Back to Map
+        Back to Map
       </button>
     </section>
   );
@@ -1524,7 +1539,7 @@ function DailyChest({
             <p>{reward.fact}</p>
           </div>
           {profile.adaptiveProfile.settings.voiceInstructions && (
-            <button onClick={() => onSpeak(reward.fact)}>🔊 Read fact aloud</button>
+            <button onClick={() => onSpeak(reward.fact)}>Read fact aloud</button>
           )}
           {profile.adaptiveProfile.settings.textHints && (
             <p className="hint">You can open one chest per day. Come back tomorrow for another fact.</p>
@@ -1536,9 +1551,9 @@ function DailyChest({
             <p className="hint">Daily chests give small rewards without streak pressure.</p>
           )}
           {profile.adaptiveProfile.settings.voiceInstructions && (
-            <button onClick={() => onSpeak(`Open today's chest for ${reward.coins} coins and a Kazakhstan fact.`)}>🔊 Read aloud</button>
+            <button onClick={() => onSpeak(`Open today's chest for ${reward.coins} coins and a Kazakhstan fact.`)}>Read aloud</button>
           )}
-          <button className="primary" onClick={onOpen}>Open chest 🎁</button>
+          <button className="primary" onClick={onOpen}>Open chest</button>
         </>
       )}
       {profile.currentStreak > 0 && (
@@ -1602,11 +1617,11 @@ function DailyTasksScreen({ profile, onBack }: { profile: UserProfile; onBack: (
 
       {allDone && (
         <div className="garden-unlocked-banner">
-          🎉 <strong>{lang === "kz" ? "Барлық тапсырмалар орындалды!" : "Все задания выполнены!"}</strong>
+          <strong>{uiStr("all_tasks_done", lang)}</strong>
         </div>
       )}
 
-      <button className="primary" onClick={onBack}>← {lang === "kz" ? "Артқа" : "Назад"}</button>
+      <button className="primary" onClick={onBack}>{uiStr("back", lang)}</button>
     </section>
   );
 }
@@ -2192,9 +2207,11 @@ function GameShell({
   };
 
   return (
-    <section className="screen">
-      <p className="eyebrow">Educational quest</p>
-      <h2>{title}</h2>
+    <section className="screen game-screen">
+      <div className="game-header">
+        <p className="eyebrow">Educational quest</p>
+        <h2>{title}</h2>
+      </div>
       <div className="bota-bubble">
         <div className="bota-face">🐫</div>
         <p>{displayed}</p>
@@ -2244,7 +2261,7 @@ function ResultScreen({
   return (
     <section className="screen center result-screen">
       <div className={`celebration ${accessibility.reducedAnimations ? "celebration--static" : ""}`}>
-        <span>⭐</span><span>🌟</span><span>✨</span><span>🌟</span><span>⭐</span>
+        <span>⭐</span><span>✨</span>
       </div>
       <p className="eyebrow">Quest complete!</p>
       <h2>{great ? "Amazing job!" : "Well done!"}</h2>
@@ -2285,12 +2302,12 @@ function ResultScreen({
         </div>
       )}
       {result.badge && <p className="badge">🏅 Badge: {result.badge}</p>}
-      <div className="cta-row">
-        <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
-        <button onClick={onGarden}>Skill Garden 🌱</button>
-        <button onClick={onRewards}>Rewards 🎁</button>
-        <button onClick={onAlbum}>Sticker Album 📔</button>
-        <button onClick={onPhotoFrame}>📸 Photo with Bota</button>
+      <div className="cta-row result-actions">
+        <button className="primary" onClick={onMap}>Back to Map</button>
+        <button onClick={onGarden}>Skill Garden</button>
+        <button onClick={onRewards}>Rewards</button>
+        <button onClick={onAlbum}>Sticker Album</button>
+        <button onClick={onPhotoFrame}>Photo with Bota</button>
       </div>
     </section>
   );
@@ -2317,11 +2334,13 @@ function RewardsShop({
     <section className="screen rewards-screen">
       <div className="rewards-hero">
         <div>
-          <p className="eyebrow">Rewards shop</p>
-          <h2>Your Bota Rewards 🎁</h2>
-          <p className="lead">Play quests to earn coins and unlock cool rewards, badges, and coupons!</p>
+          <PageHeader
+            eyebrow="Rewards shop"
+            title="Your Bota Rewards"
+            lead="Play quests to earn coins and unlock parent-approved rewards, badges, and conceptual coupons."
+          />
           <div className="cta-row">
-            <button onClick={onAlbum}>Sticker Album 📔</button>
+            <button onClick={onAlbum}>Sticker Album</button>
           </div>
         </div>
         <div className="coin-wallet">
@@ -2393,7 +2412,7 @@ function ParentPin({
   return (
     <section className="screen center">
       <p className="eyebrow">Parent Mode</p>
-      <h2>🔒 Enter PIN</h2>
+      <h2>Enter PIN</h2>
       <p className="lead">This area is for grown-ups only.</p>
       <input className="pin" inputMode="numeric" value={pin} onChange={(event) => setPin(event.target.value)} placeholder="1234" />
       {error ? (
@@ -2404,7 +2423,7 @@ function ParentPin({
           detail={error}
         />
       ) : null}
-      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Try 1234 for the MVP demo — no penalty, just try again.")}>Unlock 🔓</button>
+      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Try 1234 for the MVP demo — no penalty, just try again.")}>Unlock</button>
     </section>
   );
 }
@@ -2590,8 +2609,11 @@ function ParentDashboard({
   };
   return (
     <section className="screen">
-      <p className="eyebrow">Parent dashboard</p>
-      <h2>📊 {profile.name}'s Progress</h2>
+      <PageHeader
+        eyebrow="Parent dashboard"
+        title={`${profile.name}'s Progress`}
+        lead="A clear summary of what your child practiced today and how the comfort profile is adapting the experience."
+      />
       <ParentSummaryCard profile={profile} calendarDay={getToday()} onGarden={onGarden} onAlbum={onAlbum} />
       <div className="stats">
         <span>Age <b>{profile.age}</b></span>
@@ -2610,7 +2632,7 @@ function ParentDashboard({
         <p>
           Memory: {sp.memory}% · Math: {sp.math}% · Kazakh words: {sp.language}% · Culture: {sp.culture}%
         </p>
-        <button onClick={onGarden}>Open Skill Garden 🌱</button>
+        <button onClick={onGarden}>Open Skill Garden</button>
         <strong>Sticker album</strong>
         <p>{profile.unlockedStickers.length}/{STICKERS.length} stickers collected</p>
         <button onClick={onAlbum}>Open Sticker Album</button>
@@ -2669,8 +2691,8 @@ function ParentDashboard({
         </div>
       </div>
       <div className="cta-row">
-        <button className="primary" onClick={onSettings}>♿ Learning Comfort Profile</button>
-        <button onClick={onQr}>📦 QR Unlock</button>
+        <button className="primary" onClick={onSettings}>Learning Comfort Profile</button>
+        <button onClick={onQr}>QR Unlock</button>
       </div>
       <div className="danger-zone">
         <div>
@@ -2716,12 +2738,14 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
     ["gestureAnswerMode", "Gesture Answer Mode"],
   ];
   return (
-    <section className="screen">
-      <p className="eyebrow">Qolaily Mode</p>
-      <h2>♿ Learning Comfort Profile</h2>
-      <p className="lead">Let’s make the app comfortable for your child. You can change these anytime in Parent Mode.</p>
+    <section className="screen accessibility-screen">
+      <PageHeader
+        eyebrow="Qolaily Mode"
+        title="Learning Comfort Profile"
+        lead="Make the app comfortable for your child. You can change these anytime in Parent Mode."
+      />
       <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.adaptiveProfile.settings[key]} onChange={() => set(key)} /></label>)}</div>
-      <button className="primary" onClick={onBack}>← Back to Parent Mode</button>
+      <button className="primary" onClick={onBack}>Back to Parent Mode</button>
     </section>
   );
 }
@@ -2848,7 +2872,7 @@ function QrCollection({
       <div className="qr-note">
         Each Bota package can unlock a new educational reward. This connects physical products with digital learning and repeat engagement.
       </div>
-      {unlocked && <button onClick={onSecret}>🌟 Open Secret Location</button>}
+      {unlocked && <button onClick={onSecret}>Open Secret Location</button>}
     </section>
   );
 }
@@ -2857,15 +2881,15 @@ function SecretLocation({ onMap }: { onMap: () => void }) {
   return (
     <section className="screen center secret-screen">
       <div className="celebration">
-        <span>✨</span><span>🌟</span><span>⭐</span><span>🌟</span><span>✨</span>
+        <span>✨</span><span>⭐</span>
       </div>
       <p className="eyebrow">Secret Location</p>
-      <h2>You Found It! 🗝️</h2>
+      <h2>You Found It!</h2>
       <div className="bota-bubble">
         <div className="bota-face">🎉</div>
         <p><strong>Congratulations!</strong> Every Bota package opens a new learning adventure. Keep collecting and exploring!</p>
       </div>
-      <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
+      <button className="primary" onClick={onMap}>Back to Map</button>
     </section>
   );
 }
