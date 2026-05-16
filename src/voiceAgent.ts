@@ -37,15 +37,25 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 export async function transcribeAudio(blob: Blob, language: Language): Promise<{ transcript: string; language: string | null }> {
   const audioBase64 = await blobToBase64(blob);
-  const response = await fetch("/api/voice/transcribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      audioBase64,
-      mimeType: blob.type || "audio/webm",
-      language: language === "kz" ? "kk" : "ru",
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let response: Response;
+  try {
+    response = await fetch("/api/voice/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audioBase64,
+        mimeType: blob.type || "audio/webm",
+        language: language === "kz" ? "kk" : "ru",
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    throw new Error(err instanceof DOMException && err.name === "AbortError" ? "Transcription timed out. Please try again." : "Network error during transcription.");
+  }
+  clearTimeout(timeout);
 
   const data = await readJsonIfPossible<{ transcript?: string; language?: string | null; error?: string }>(response);
   if (!response.ok) throw new Error(data?.error || "Transcription failed");
@@ -60,11 +70,23 @@ export async function resolveVoiceCommand(
   transcript: string,
   context: VoiceAgentContext,
 ): Promise<VoiceCommandResolution> {
-  const response = await fetch("/api/voice/command", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ transcript, context }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let response: Response;
+  try {
+    response = await fetch("/api/voice/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript, context }),
+      signal: controller.signal,
+    });
+  } catch {
+    clearTimeout(timeout);
+    const fallbackDirect = matchVoiceCommand(transcript);
+    const act = fallbackDirect && context.allowedCommands.includes(fallbackDirect) ? fallbackDirect : null;
+    return { action: act, replyText: act ? "Okay." : "Voice command timed out.", transcript, source: "fallback" };
+  }
+  clearTimeout(timeout);
 
   const data = await readJsonIfPossible<Partial<VoiceCommandResolution> & { error?: string }>(response);
   const fallback = matchVoiceCommand(transcript);
@@ -91,11 +113,21 @@ export async function speakText(text: string, language: Language): Promise<boole
   cancelVoicePlayback();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
-  const response = await fetch("/api/voice/speak", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: trimmed, language }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let response: Response;
+  try {
+    response = await fetch("/api/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: trimmed, language }),
+      signal: controller.signal,
+    });
+  } catch {
+    clearTimeout(timeout);
+    return false;
+  }
+  clearTimeout(timeout);
 
   if (!response.ok) return false;
 
