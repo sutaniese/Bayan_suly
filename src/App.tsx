@@ -394,13 +394,16 @@ function RewardsShop({ profile }: { profile: UserProfile }) {
     <section className="screen">
       <p className="eyebrow">Rewards shop</p>
       <h2>{profile.coins} Bota Coins</h2>
+      <p className="lead">Learning progress turns into concept rewards parents can understand.</p>
       <div className="reward-list">
         {rewards.map((reward) => {
           const unlocked = reward.type === "qr_bonus" ? profile.unlockedLocations.includes("secret") : profile.coins >= reward.cost;
           return (
             <article className={`reward ${unlocked ? "available" : ""}`} key={reward.id}>
-              <strong>{reward.title}</strong>
-              <span>{reward.cost ? `${reward.cost} coins` : "QR only"}</span>
+              <div className="reward-head">
+                <strong>{reward.title}</strong>
+                <span>{reward.cost ? `${reward.cost} coins` : "QR only"}</span>
+              </div>
               <p>{reward.description}</p>
               {reward.code && unlocked && <div className="coupon"><b>{reward.code}</b><small>{reward.discount}</small><button>Show to Parent</button><em>Concept only. Real cashier/POS integration is a future step.</em></div>}
             </article>

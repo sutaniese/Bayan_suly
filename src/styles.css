@@ -59,13 +59,17 @@ h3 { font-size: 1.35rem; }
 .active-answer { outline: 4px solid #e97132; }
 .score { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: #68b06d; color: #fff; font-size: 2rem; font-weight: 900; border: 4px solid #24311f; }
 .reward-list, .toggle-list, .stats { display: grid; gap: 0.75rem; }
-.reward { display: grid; gap: 0.45rem; opacity: 0.72; }
-.reward.available { opacity: 1; border-color: #68b06d; }
-.coupon { display: grid; gap: 0.35rem; border-radius: 8px; background: #f5f0ff; padding: 0.75rem; }
+.reward { display: grid; gap: 0.55rem; opacity: 0.72; background: linear-gradient(180deg, #fffdfa, #fff3cf); }
+.reward-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.reward-head span { flex: 0 0 auto; border-radius: 999px; padding: 0.28rem 0.55rem; background: #24311f; color: #fff8e8; font-size: 0.78rem; font-weight: 900; }
+.reward.available { opacity: 1; border-color: #68b06d; box-shadow: inset 0 0 0 2px rgba(104, 176, 109, 0.16); }
+.coupon { display: grid; gap: 0.45rem; border-radius: 8px; background: #f5f0ff; padding: 0.75rem; border: 2px dashed #7c62b2; }
+.coupon b { font-size: 1.05rem; }
 .coupon em { font-size: 0.82rem; color: #5f546d; }
 .pin { text-align: center; font-size: 1.5rem; letter-spacing: 0.25rem; }
 .stats { grid-template-columns: 1fr 1fr; }
-.stats span { min-height: 76px; display: grid; align-content: center; gap: 0.2rem; border-radius: 8px; background: #fffdfa; border: 2px solid #dfc790; padding: 0.75rem; }
+.stats span { min-height: 76px; display: grid; align-content: center; gap: 0.2rem; border-radius: 8px; background: #fffdfa; border: 2px solid #dfc790; padding: 0.75rem; box-shadow: 0 3px 0 rgba(36, 49, 31, 0.1); }
+.stats b { font-size: 1.15rem; color: #246e45; }
 .toggle { min-height: 58px; display: flex; align-items: center; justify-content: space-between; border-radius: 8px; background: #fffdfa; border: 2px solid #dfc790; padding: 0.75rem; }
 .toggle input { width: 28px; min-height: 28px; }
 .qr { width: 150px; height: 150px; display: grid; place-items: center; border-radius: 18px; background: repeating-linear-gradient(45deg, #24311f 0 10px, #fff 10px 20px); color: #e97132; font-size: 3rem; border: 5px solid #24311f; }
