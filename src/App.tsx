@@ -115,6 +115,10 @@ type Reward = {
   discount?: string;
 };
 
+type LocalizedText = Record<Language, string>;
+
+const pickText = (text: LocalizedText, language: Language) => text[language] ?? text.en;
+
 const locations: Location[] = [
   // City coordinates use real-world lat/lon (GeoNames/OSM-level precision) and are projected into the map.
   { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", lat: 51.1694, lon: 71.4491 },
@@ -124,6 +128,46 @@ const locations: Location[] = [
   { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", lat: 43.2525, lon: 76.9115 },
   { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 80, y: 56, locked: true },
 ];
+
+const LOCATION_COPY: Record<string, { title: LocalizedText; skill: LocalizedText; city?: LocalizedText }> = {
+  astana: {
+    title: { en: "Counting with Bota", ru: "Счёт с Ботой", kz: "Ботамен санау" },
+    skill: { en: "Math", ru: "Математика", kz: "Математика" },
+  },
+  karaganda: {
+    title: { en: "Pattern Caravan", ru: "Караван узоров", kz: "Өрнек керуені" },
+    skill: { en: "Logic", ru: "Логика", kz: "Логика" },
+  },
+  turkestan: {
+    title: { en: "Find the Kazakh Word", ru: "Найди казахское слово", kz: "Қазақ сөзін тап" },
+    skill: { en: "Kazakh language", ru: "Казахский язык", kz: "Қазақ тілі" },
+  },
+  shymkent: {
+    title: { en: "Culture Match", ru: "Культурное совпадение", kz: "Мәдениет сәйкестігі" },
+    skill: { en: "Culture", ru: "Культура", kz: "Мәдениет" },
+  },
+  almaty: {
+    title: { en: "Collect the Sweets", ru: "Собери сладости", kz: "Тәттілерді жина" },
+    skill: { en: "Memory", ru: "Память", kz: "Есте сақтау" },
+  },
+  secret: {
+    city: { en: "Secret Location", ru: "Секретная локация", kz: "Құпия орын" },
+    title: { en: "Package Adventure", ru: "Приключение с упаковкой", kz: "Орама оқиғасы" },
+    skill: { en: "QR reward", ru: "QR-награда", kz: "QR сыйлығы" },
+  },
+};
+
+function locationTitle(location: Location, language: Language): string {
+  return LOCATION_COPY[location.id]?.title ? pickText(LOCATION_COPY[location.id]!.title, language) : location.title;
+}
+
+function locationSkill(location: Location, language: Language): string {
+  return LOCATION_COPY[location.id]?.skill ? pickText(LOCATION_COPY[location.id]!.skill, language) : location.skill;
+}
+
+function locationCity(location: Location, language: Language): string {
+  return LOCATION_COPY[location.id]?.city ? pickText(LOCATION_COPY[location.id]!.city!, language) : location.city;
+}
 
 const KZ_BOUNDS = {
   // Approximate Kazakhstan bounds (north/south/west/east).
@@ -268,56 +312,194 @@ const rewards: Reward[] = [
 ];
 
 const wordQuestions = [
-  { icon: "🐫", prompt: "Camel", answer: "түйе", options: ["түйе", "тау", "су", "алма"], fact: "Түйе means camel." },
-  { icon: "⛰️", prompt: "Mountain", answer: "тау", options: ["алма", "тау", "дала", "түйе"], fact: "Тау means mountain." },
-  { icon: "🍎", prompt: "Apple", answer: "алма", options: ["су", "алма", "түйе", "дала"], fact: "Алма means apple." },
-  { icon: "💧", prompt: "Water", answer: "су", options: ["дала", "су", "тау", "алма"], fact: "Су means water." },
-  { icon: "🌾", prompt: "Steppe", answer: "дала", options: ["дала", "алма", "түйе", "тау"], fact: "Дала means steppe." },
+  {
+    icon: "🐫",
+    prompt: { en: "Camel", ru: "Верблюд", kz: "Түйе" },
+    answer: "түйе",
+    options: ["түйе", "тау", "су", "алма"],
+    fact: { en: "Түйе means camel.", ru: "Түйе значит верблюд.", kz: "Түйе деген сөз - camel." },
+  },
+  {
+    icon: "⛰️",
+    prompt: { en: "Mountain", ru: "Гора", kz: "Тау" },
+    answer: "тау",
+    options: ["алма", "тау", "дала", "түйе"],
+    fact: { en: "Тау means mountain.", ru: "Тау значит гора.", kz: "Тау деген сөз - mountain." },
+  },
+  {
+    icon: "🍎",
+    prompt: { en: "Apple", ru: "Яблоко", kz: "Алма" },
+    answer: "алма",
+    options: ["су", "алма", "түйе", "дала"],
+    fact: { en: "Алма means apple.", ru: "Алма значит яблоко.", kz: "Алма деген сөз - apple." },
+  },
+  {
+    icon: "💧",
+    prompt: { en: "Water", ru: "Вода", kz: "Су" },
+    answer: "су",
+    options: ["дала", "су", "тау", "алма"],
+    fact: { en: "Су means water.", ru: "Су значит вода.", kz: "Су деген сөз - water." },
+  },
+  {
+    icon: "🌾",
+    prompt: { en: "Steppe", ru: "Степь", kz: "Дала" },
+    answer: "дала",
+    options: ["дала", "алма", "түйе", "тау"],
+    fact: { en: "Дала means steppe.", ru: "Дала значит степь.", kz: "Дала деген сөз - steppe." },
+  },
 ];
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
 const patternQuestions = [
-  { sequence: ["🍬", "🍫", "🍬", "🍫", "?"], answer: "🍬", options: ["🍬", "🍭", "🐫"], rule: "The sweets alternate." },
-  { sequence: ["1", "2", "4", "7", "?"], answer: "11", options: ["9", "10", "11"], rule: "Add 1, then 2, then 3, then 4." },
-  { sequence: ["🔴", "🔵", "🔵", "🔴", "🔵", "🔵", "?"], answer: "🔴", options: ["🔴", "🔵", "🟡"], rule: "One red, then two blue repeats." },
+  {
+    sequence: ["🍬", "🍫", "🍬", "🍫", "?"],
+    answer: "🍬",
+    options: ["🍬", "🍭", "🐫"],
+    rule: { en: "The sweets alternate.", ru: "Сладости чередуются.", kz: "Тәттілер кезектесіп тұр." },
+  },
+  {
+    sequence: ["1", "2", "4", "7", "?"],
+    answer: "11",
+    options: ["9", "10", "11"],
+    rule: { en: "Add 1, then 2, then 3, then 4.", ru: "Прибавляй 1, потом 2, потом 3, потом 4.", kz: "Алдымен 1, кейін 2, кейін 3, кейін 4 қос." },
+  },
+  {
+    sequence: ["🔴", "🔵", "🔵", "🔴", "🔵", "🔵", "?"],
+    answer: "🔴",
+    options: ["🔴", "🔵", "🟡"],
+    rule: { en: "One red, then two blue repeats.", ru: "Повторяется: один красный, два синих.", kz: "Бір қызыл, екі көк қайталанады." },
+  },
 ];
 
 const cultureQuestions = [
-  { prompt: "Which place is famous for Baiterek?", answer: "Astana", options: ["Astana", "Almaty", "Turkestan"], fact: "Baiterek is a landmark in Astana." },
-  { prompt: "Which city is known for mountains nearby?", answer: "Almaty", options: ["Shymkent", "Almaty", "Karaganda"], fact: "Almaty sits near the Ile Alatau mountains." },
-  { prompt: "Which city is linked with the Mausoleum of Khoja Ahmed Yasawi?", answer: "Turkestan", options: ["Turkestan", "Astana", "Atyrau"], fact: "Turkestan is one of Kazakhstan's historic cultural centers." },
+  {
+    prompt: { en: "Which place is famous for Baiterek?", ru: "Какой город известен Байтереком?", kz: "Бәйтерек қай қалада орналасқан?" },
+    answer: "Astana",
+    options: ["Astana", "Almaty", "Turkestan"],
+    fact: { en: "Baiterek is a landmark in Astana.", ru: "Байтерек - символ Астаны.", kz: "Бәйтерек - Астананың көрнекті орны." },
+  },
+  {
+    prompt: { en: "Which city is known for mountains nearby?", ru: "Какой город известен горами рядом?", kz: "Қай қала тауларымен белгілі?" },
+    answer: "Almaty",
+    options: ["Shymkent", "Almaty", "Karaganda"],
+    fact: { en: "Almaty sits near the Ile Alatau mountains.", ru: "Алматы находится у гор Заилийского Алатау.", kz: "Алматы Іле Алатауының жанында орналасқан." },
+  },
+  {
+    prompt: { en: "Which city is linked with the Mausoleum of Khoja Ahmed Yasawi?", ru: "Какой город связан с мавзолеем Ходжи Ахмеда Ясави?", kz: "Қожа Ахмет Ясауи кесенесі қай қалада?" },
+    answer: "Turkestan",
+    options: ["Turkestan", "Astana", "Atyrau"],
+    fact: { en: "Turkestan is one of Kazakhstan's historic cultural centers.", ru: "Туркестан - один из исторических культурных центров Казахстана.", kz: "Түркістан - Қазақстанның тарихи мәдени орталықтарының бірі." },
+  },
 ];
 
-const MEMORY_INSTRUCTION: AdaptiveInstruction = {
-  default: "Flip two cards and find every matching pair.",
-  simple: "Tap two cards. If they match, they stay open.",
-  audioText: "Flip two cards at a time and find every matching pair of sweets.",
+const GAME_COPY: Record<string, { title: LocalizedText; instruction: Record<keyof AdaptiveInstruction, LocalizedText> }> = {
+  memory: {
+    title: { en: "Collect the Sweets", ru: "Собери сладости", kz: "Тәттілерді жина" },
+    instruction: {
+      default: { en: "Flip two cards and find every matching pair.", ru: "Открой две карточки и найди все пары.", kz: "Екі картаны ашып, барлық жұптарды тап." },
+      simple: { en: "Tap two cards. If they match, they stay open.", ru: "Нажми две карточки. Если они пара, они останутся открытыми.", kz: "Екі картаны бас. Жұп болса, ашық қалады." },
+      audioText: { en: "Flip two cards at a time and find every matching pair of sweets.", ru: "Открывай по две карточки и находи одинаковые сладости.", kz: "Екі картаны ашып, бірдей тәттілерді тап." },
+    },
+  },
+  words: {
+    title: { en: "Find the Kazakh Word", ru: "Найди казахское слово", kz: "Қазақ сөзін тап" },
+    instruction: {
+      default: { en: "Choose the Kazakh word that matches the picture.", ru: "Выбери казахское слово к картинке.", kz: "Суретке сәйкес қазақ сөзін таңда." },
+      simple: { en: "Find the word for this picture.", ru: "Найди слово для картинки.", kz: "Осы суретке сөз тап." },
+      audioText: { en: "Look at the picture and choose the correct Kazakh word.", ru: "Посмотри на картинку и выбери правильное казахское слово.", kz: "Суретке қарап, дұрыс қазақ сөзін таңда." },
+    },
+  },
+  math: {
+    title: { en: "Counting with Bota", ru: "Счёт с Ботой", kz: "Ботамен санау" },
+    instruction: {
+      default: { en: "Pick the correct answer.", ru: "Выбери правильный ответ.", kz: "Дұрыс жауапты таңда." },
+      simple: { en: "Choose the right answer for the question.", ru: "Выбери верный ответ на вопрос.", kz: "Сұраққа дұрыс жауапты таңда." },
+      audioText: { en: "Read the question and pick the correct answer.", ru: "Прочитай вопрос и выбери правильный ответ.", kz: "Сұрақты оқып, дұрыс жауапты таңда." },
+    },
+  },
+  patterns: {
+    title: { en: "Pattern Caravan", ru: "Караван узоров", kz: "Өрнек керуені" },
+    instruction: {
+      default: { en: "Find what comes next in the pattern.", ru: "Найди, что будет дальше в узоре.", kz: "Өрнекте келесі не екенін тап." },
+      simple: { en: "What comes next in the pattern?", ru: "Что идёт дальше?", kz: "Келесі не болады?" },
+      audioText: { en: "Look at the pattern and choose what comes next.", ru: "Посмотри на узор и выбери следующий элемент.", kz: "Өрнекке қарап, келесі элементті таңда." },
+    },
+  },
+  culture: {
+    title: { en: "Culture Match", ru: "Культурное совпадение", kz: "Мәдениет сәйкестігі" },
+    instruction: {
+      default: { en: "Match Kazakhstan places with the right fact.", ru: "Соедини места Казахстана с правильным фактом.", kz: "Қазақстан орындарын дұрыс дерекпен сәйкестендір." },
+      simple: { en: "Pick the right city for the clue.", ru: "Выбери город по подсказке.", kz: "Кеңеске сәйкес қаланы таңда." },
+      audioText: { en: "Read the clue and choose the matching place in Kazakhstan.", ru: "Прочитай подсказку и выбери подходящее место в Казахстане.", kz: "Кеңесті оқып, Қазақстандағы дұрыс орынды таңда." },
+    },
+  },
 };
 
-const WORDS_INSTRUCTION: AdaptiveInstruction = {
-  default: "Choose the Kazakh word that matches the picture.",
-  simple: "Find the word for this picture.",
-  audioText: "Look at the picture and choose the correct Kazakh word.",
+function gameTitle(gameId: keyof typeof GAME_COPY, language: Language): string {
+  return pickText(GAME_COPY[gameId].title, language);
+}
+
+function gameInstruction(gameId: keyof typeof GAME_COPY, language: Language): AdaptiveInstruction {
+  const instruction = GAME_COPY[gameId].instruction;
+  return {
+    default: pickText(instruction.default, language),
+    simple: pickText(instruction.simple, language),
+    audioText: pickText(instruction.audioText, language),
+  };
+}
+
+const MATH_PROMPTS: Record<string, LocalizedText> = {
+  "Bota had 3 sweets and found 2 more. How many?": {
+    en: "Bota had 3 sweets and found 2 more. How many?",
+    ru: "У Боты было 3 сладости, он нашёл ещё 2. Сколько стало?",
+    kz: "Ботада 3 тәтті болды, тағы 2 тапты. Барлығы неше?",
+  },
+  "There are 4 apples and 3 more arrive. Total?": {
+    en: "There are 4 apples and 3 more arrive. Total?",
+    ru: "Есть 4 яблока, добавили ещё 3. Сколько всего?",
+    kz: "4 алма бар, тағы 3 алма қосылды. Барлығы неше?",
+  },
+  "Bota sees 5 stars and 5 more. Total?": {
+    en: "Bota sees 5 stars and 5 more. Total?",
+    ru: "Бота видит 5 звёзд и ещё 5. Сколько всего?",
+    kz: "Бота 5 жұлдыз және тағы 5 жұлдыз көрді. Барлығы неше?",
+  },
+  "Bota has 14 sweets and shares 5. How many remain?": {
+    en: "Bota has 14 sweets and shares 5. How many remain?",
+    ru: "У Боты 14 сладостей, он поделился 5. Сколько осталось?",
+    kz: "Ботада 14 тәтті бар, 5 тәттіні берді. Қанша қалды?",
+  },
+  "A basket has 8 apples. Add 7 more. Total?": {
+    en: "A basket has 8 apples. Add 7 more. Total?",
+    ru: "В корзине 8 яблок. Добавили ещё 7. Сколько всего?",
+    kz: "Себетте 8 алма бар. Тағы 7 алма қосылды. Барлығы неше?",
+  },
+  "20 coins minus 6 coins equals?": {
+    en: "20 coins minus 6 coins equals?",
+    ru: "20 монет минус 6 монет равно?",
+    kz: "20 тиыннан 6 тиын алсақ, қанша қалады?",
+  },
+  "Bota packs 3 boxes with 4 sweets each. Total?": {
+    en: "Bota packs 3 boxes with 4 sweets each. Total?",
+    ru: "Бота кладёт по 4 сладости в 3 коробки. Сколько всего?",
+    kz: "Бота 3 қорапқа 4 тәттіден салды. Барлығы неше?",
+  },
+  "Two families each get 6 candies. Total?": {
+    en: "Two families each get 6 candies. Total?",
+    ru: "Две семьи получили по 6 конфет. Сколько всего?",
+    kz: "Екі отбасы 6 кәмпиттен алды. Барлығы неше?",
+  },
+  "Which number completes 5, 10, 15, ?": {
+    en: "Which number completes 5, 10, 15, ?",
+    ru: "Какое число продолжит ряд 5, 10, 15, ?",
+    kz: "5, 10, 15, ? қатарын қай сан жалғастырады?",
+  },
 };
 
-const MATH_INSTRUCTION: AdaptiveInstruction = {
-  default: "Pick the correct answer.",
-  simple: "Choose the right answer for the question.",
-  audioText: "Read the question and pick the correct answer.",
-};
-
-const PATTERN_INSTRUCTION: AdaptiveInstruction = {
-  default: "Find what comes next in the pattern.",
-  simple: "What comes next in the pattern?",
-  audioText: "Look at the pattern and choose what comes next.",
-};
-
-const CULTURE_INSTRUCTION: AdaptiveInstruction = {
-  default: "Match Kazakhstan places with the right fact.",
-  simple: "Pick the right city for the clue.",
-  audioText: "Read the clue and choose the matching place in Kazakhstan.",
-};
+function localizedMathPrompt(prompt: string, language: Language): string {
+  return MATH_PROMPTS[prompt] ? pickText(MATH_PROMPTS[prompt], language) : prompt;
+}
 
 function loadProfile(): UserProfile | null {
   try {
@@ -527,17 +709,18 @@ function App() {
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
               onDone={() =>
-                awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")
+                awardGame({ gameId: "memory", title: gameTitle("memory", profile.language), score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")
               }
               onSpeak={speak}
             />
           )}
           {profile && view === "words" && (
             <WordsGame
+              language={profile.language}
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
               onDone={(score) =>
-                awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")
+                awardGame({ gameId: "words", title: gameTitle("words", profile.language), score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")
               }
               onSpeak={speak}
             />
@@ -545,27 +728,30 @@ function App() {
           {profile && view === "math" && (
             <MathGame
               age={profile.age}
+              language={profile.language}
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
               onDone={(score) =>
-                awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")
+                awardGame({ gameId: "math", title: gameTitle("math", profile.language), score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")
               }
               onSpeak={speak}
             />
           )}
           {profile && view === "patterns" && (
             <PatternGame
+              language={profile.language}
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
-              onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)}
+              onDone={(score) => awardGame({ gameId: "patterns", title: gameTitle("patterns", profile.language), score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)}
               onSpeak={speak}
             />
           )}
           {profile && view === "culture" && (
             <CultureGame
+              language={profile.language}
               accessibility={profile.adaptiveProfile.settings}
               onRegisterInstruction={registerGameInstruction}
-              onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)}
+              onDone={(score) => awardGame({ gameId: "culture", title: gameTitle("culture", profile.language), score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)}
               onSpeak={speak}
             />
           )}
@@ -1368,13 +1554,13 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
                   disabled={!unlocked}
                   style={getLocationPositionPct(location)}
                   onClick={() => (location.gameId ? onGo(location.gameId) : onGo("secret"))}
-                  aria-label={`${location.city}: ${location.title}`}
+                  aria-label={`${locationCity(location, profile.language)}: ${locationTitle(location, profile.language)}`}
                 >
                   <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
                   <span className="pin-label">
-                    <strong>{location.city}</strong>
-                    <small>{location.title}</small>
-                    <em>{completed ? t("completed") : unlocked ? location.skill : t("scan_camera")}</em>
+                    <strong>{locationCity(location, profile.language)}</strong>
+                    <small>{locationTitle(location, profile.language)}</small>
+                    <em>{completed ? t("completed") : unlocked ? locationSkill(location, profile.language) : t("scan_camera")}</em>
                   </span>
                 </button>
               );
@@ -1387,7 +1573,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             <div className="guide-avatar">🐫</div>
             <div>
               <p>{nextQuest ? t("map_tap_city") : t("map_all_done")}</p>
-              <strong>{nextQuest ? `${t("map_try_next")} ${nextQuest.city}` : t("map_all_done")}</strong>
+              <strong>{nextQuest ? `${t("map_try_next")} ${locationCity(nextQuest, profile.language)}` : t("map_all_done")}</strong>
             </div>
           </div>
           <div className="quest-list">
@@ -1397,8 +1583,8 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
               return (
                 <button key={location.id} className={`quest-row ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
             <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
-                  <strong>{location.city}</strong>
-                  <small>{completed ? t("completed") : location.title}</small>
+                  <strong>{locationCity(location, profile.language)}</strong>
+                  <small>{completed ? t("completed") : locationTitle(location, profile.language)}</small>
                 </button>
               );
             })}
@@ -1573,6 +1759,31 @@ function DailyChest({
   );
 }
 
+function dailyTaskLabel(task: UserProfile["dailyTasks"][number], language: Language): string {
+  if (task.type === "play_game") {
+    return {
+      en: `Play ${task.target} ${task.target === 1 ? "game" : "games"}`,
+      ru: `Пройди ${task.target} ${task.target === 1 ? "игру" : "игры"}`,
+      kz: `${task.target} ойын ойна`,
+    }[language];
+  }
+  if (task.type === "earn_coins") {
+    return {
+      en: `Earn ${task.target} coins`,
+      ru: `Заработай ${task.target} монет`,
+      kz: `${task.target} тиын жина`,
+    }[language];
+  }
+  if (task.type === "open_chest") {
+    return uiStr("chest_title_open", language);
+  }
+  return {
+    en: "Collect a sticker",
+    ru: "Получи стикер",
+    kz: "Стикер жина",
+  }[language];
+}
+
 function DailyTasksScreen({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
   const lang = profile.language;
   const tasks = profile.dailyTasks;
@@ -1600,14 +1811,20 @@ function DailyTasksScreen({ profile, onBack }: { profile: UserProfile; onBack: (
       </div>
 
       {tasks.length === 0 ? (
-        <p className="lead">Open the daily chest first to activate today's tasks!</p>
+        <p className="lead">
+          {lang === "kz"
+            ? "Бүгінгі тапсырмаларды ашу үшін алдымен сандықты аш."
+            : lang === "ru"
+              ? "Сначала открой сундук, чтобы активировать задания на сегодня."
+              : "Open the daily chest first to activate today's tasks!"}
+        </p>
       ) : (
         <div className="task-list">
           {tasks.map((task) => (
             <div key={task.id} className={`task-card ${task.completed ? "done" : ""}`}>
               <div className="task-card-top">
                 <span>{task.completed ? "✅" : "⬜"}</span>
-                <strong>{task.label[lang]}</strong>
+                <strong>{dailyTaskLabel(task, lang)}</strong>
                 <span className="task-reward">+{task.rewardCoins} 🪙</span>
               </div>
               <div className="skill-bar">
@@ -1743,7 +1960,7 @@ function MemoryGame({
     if (speakOnReveal) {
       const sym = deck[index];
       const labels = MEMORY_CARD_VOICE[sym];
-      const line = labels ? (language === "kz" ? labels.kz : labels.ru) : sym;
+      const line = labels ? labels[language] : sym;
       queueMicrotask(() => onSpeak(line));
     }
     setFlipped((prev) => [...prev, index]);
@@ -1753,11 +1970,12 @@ function MemoryGame({
 
   return (
     <GameShell
-      title="Collect the Sweets"
-      instruction={MEMORY_INSTRUCTION}
+      title={gameTitle("memory", language)}
+      instruction={gameInstruction("memory", language)}
       accessibility={accessibility}
       onSpeak={onSpeak}
       onRegisterInstruction={onRegisterInstruction}
+      language={language}
     >
       <div className={`memory-grid ${gridPairsClass}${largeCards ? " memory-grid--large-cards" : ""}`}>
         {deck.map((card, index) => {
@@ -1791,11 +2009,13 @@ function MemoryGame({
 }
 
 function WordsGame({
+  language,
   accessibility,
   onDone,
   onSpeak,
   onRegisterInstruction,
 }: {
+  language: Language;
   accessibility: AccessibilitySettings;
   onDone: (score: number) => void;
   onSpeak: (text: string) => void;
@@ -1835,16 +2055,17 @@ function WordsGame({
 
   return (
     <GameShell
-      title="Find the Kazakh Word"
-      instruction={WORDS_INSTRUCTION}
+      title={gameTitle("words", language)}
+      instruction={gameInstruction("words", language)}
       accessibility={accessibility}
       onSpeak={onSpeak}
       onRegisterInstruction={onRegisterInstruction}
+      language={language}
     >
       <div className="question-card">
         <div className="big-icon">{question.icon}</div>
-        <h3>{question.prompt}</h3>
-        {hearingText && <p className="word-prompt-text">Pick the Kazakh word that matches the picture. Everything is written — no sound required.</p>}
+        <h3>{pickText(question.prompt, language)}</h3>
+        {hearingText && <p className="word-prompt-text">{gameInstruction("words", language).simple}</p>}
       </div>
       {accessibility.gestureAnswerMode && options.length > 0 && (
         <div className="gesture-box">
@@ -1852,7 +2073,7 @@ function WordsGame({
           <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
           <div className="cta-row">
             <button type="button" onClick={() => setActive((active + 1) % options.length)}>👉 Next</button>
-            <button type="button" onClick={() => onSpeak(WORDS_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button type="button" onClick={() => onSpeak(gameInstruction("words", language).audioText)}>✋ Repeat</button>
             <button
               type="button"
               onClick={() => {
@@ -1887,8 +2108,8 @@ function WordsGame({
       {lastOk !== null ? (
         <QuestAnswerFeedback
           outcome={lastOk ? "correct" : "wrong"}
-          headline={lastOk ? "Correct!" : "Try again"}
-          detail={lastOk ? question.fact : `Here is a hint: ${question.fact}`}
+          headline={lastOk ? uiStr("correct", language) : uiStr("try_again", language)}
+          detail={lastOk ? pickText(question.fact, language) : pickText(question.fact, language)}
           accessibility={accessibility}
           onSpeak={onSpeak}
         />
@@ -1899,12 +2120,14 @@ function WordsGame({
 
 function MathGame({
   age,
+  language,
   accessibility,
   onDone,
   onSpeak,
   onRegisterInstruction,
 }: {
   age: Age;
+  language: Language;
   accessibility: AccessibilitySettings;
   onDone: (score: number) => void;
   onSpeak: (text: string) => void;
@@ -1942,15 +2165,15 @@ function MathGame({
     const ok = option === question.answer;
     const nextCorrect = correct + (ok ? 1 : 0);
     setCorrect(nextCorrect);
-    const hintLine = mathStepHintForQuestion(question.prompt);
+    const hintLine = language === "en" ? mathStepHintForQuestion(question.prompt) : gameInstruction("math", language).simple;
     if (ok) {
-      setAnswerFlash({ ok: true, detail: "Nice counting — next step is on the way!" });
+      setAnswerFlash({ ok: true, detail: uiStr("correct", language) });
       window.setTimeout(() => {
         setAnswerFlash(null);
         advance(nextCorrect);
       }, 420);
     } else {
-      setAnswerFlash({ ok: false, detail: `Here is a hint: ${hintLine}` });
+      setAnswerFlash({ ok: false, detail: hintLine });
       window.setTimeout(() => {
         setAnswerFlash(null);
         advance(nextCorrect);
@@ -1967,13 +2190,13 @@ function MathGame({
   };
 
   return (
-    <GameShell title="Counting with Bota" instruction={MATH_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title={gameTitle("math", language)} instruction={gameInstruction("math", language)} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction} language={language}>
       <div className={`question-card${accessibility.largeText || accessibility.highContrast ? " question-card--math-large" : ""}`}>
-        <h3>{question.prompt}</h3>
-        {focusMath && <p className="math-step-hint">{mathStepHintForQuestion(question.prompt)}</p>}
+        <h3>{localizedMathPrompt(question.prompt, language)}</h3>
+        {focusMath && <p className="math-step-hint">{language === "en" ? mathStepHintForQuestion(question.prompt) : gameInstruction("math", language).simple}</p>}
         {readProblemAloud && (
-          <button type="button" className="read-problem-btn" onClick={() => onSpeak(question.prompt)}>
-            🔊 Read question
+          <button type="button" className="read-problem-btn" onClick={() => onSpeak(localizedMathPrompt(question.prompt, language))}>
+            {uiStr("game_read_aloud", language)}
           </button>
         )}
       </div>
@@ -1983,7 +2206,7 @@ function MathGame({
           <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
           <div className="cta-row">
             <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
-            <button type="button" onClick={() => onSpeak(question.prompt)}>✋ Repeat</button>
+            <button type="button" onClick={() => onSpeak(localizedMathPrompt(question.prompt, language))}>✋ Repeat</button>
             <button
               type="button"
               onClick={() => {
@@ -2012,7 +2235,7 @@ function MathGame({
       {answerFlash ? (
         <QuestAnswerFeedback
           outcome={answerFlash.ok ? "correct" : "wrong"}
-          headline={answerFlash.ok ? "Correct!" : "Try again"}
+          headline={answerFlash.ok ? uiStr("correct", language) : uiStr("try_again", language)}
           detail={answerFlash.detail}
           accessibility={accessibility}
           onSpeak={onSpeak}
@@ -2035,11 +2258,13 @@ function MathGame({
 }
 
 function PatternGame({
+  language,
   accessibility,
   onDone,
   onSpeak,
   onRegisterInstruction,
 }: {
+  language: Language;
   accessibility: AccessibilitySettings;
   onDone: (score: number) => void;
   onSpeak: (text: string) => void;
@@ -2070,7 +2295,7 @@ function PatternGame({
   };
 
   return (
-    <GameShell title="Pattern Caravan" instruction={PATTERN_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title={gameTitle("patterns", language)} instruction={gameInstruction("patterns", language)} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction} language={language}>
       <div className="sequence-card">{question.sequence.map((item, itemIndex) => <span key={`${item}-${itemIndex}`}>{item}</span>)}</div>
       {accessibility.gestureAnswerMode && question.options.length > 0 && (
         <div className="gesture-box">
@@ -2078,7 +2303,7 @@ function PatternGame({
           <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
           <div className="cta-row">
             <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
-            <button type="button" onClick={() => onSpeak(PATTERN_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button type="button" onClick={() => onSpeak(gameInstruction("patterns", language).audioText)}>✋ Repeat</button>
             <button type="button" onClick={() => answer(question.options[active]!)}>
               👍 Select {question.options[active]}
             </button>
@@ -2095,8 +2320,8 @@ function PatternGame({
       {lastOk !== null ? (
         <QuestAnswerFeedback
           outcome={lastOk ? "correct" : "wrong"}
-          headline={lastOk ? "Correct!" : "Try again"}
-          detail={lastOk ? question.rule : `Here is a hint: ${question.rule}`}
+          headline={lastOk ? uiStr("correct", language) : uiStr("try_again", language)}
+          detail={pickText(question.rule, language)}
           accessibility={accessibility}
           onSpeak={onSpeak}
         />
@@ -2106,11 +2331,13 @@ function PatternGame({
 }
 
 function CultureGame({
+  language,
   accessibility,
   onDone,
   onSpeak,
   onRegisterInstruction,
 }: {
+  language: Language;
   accessibility: AccessibilitySettings;
   onDone: (score: number) => void;
   onSpeak: (text: string) => void;
@@ -2141,10 +2368,10 @@ function CultureGame({
   };
 
   return (
-    <GameShell title="Culture Match" instruction={CULTURE_INSTRUCTION} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction}>
+    <GameShell title={gameTitle("culture", language)} instruction={gameInstruction("culture", language)} accessibility={accessibility} onSpeak={onSpeak} onRegisterInstruction={onRegisterInstruction} language={language}>
       <div className="question-card culture-card">
         <div className="big-icon">🧭</div>
-        <h3>{question.prompt}</h3>
+        <h3>{pickText(question.prompt, language)}</h3>
       </div>
       {accessibility.gestureAnswerMode && question.options.length > 0 && (
         <div className="gesture-box">
@@ -2152,7 +2379,7 @@ function CultureGame({
           <p>👍 selects active answer. ✋ repeats instruction. 👉 moves to next option.</p>
           <div className="cta-row">
             <button type="button" onClick={() => setActive((active + 1) % question.options.length)}>👉 Next</button>
-            <button type="button" onClick={() => onSpeak(CULTURE_INSTRUCTION.audioText)}>✋ Repeat</button>
+            <button type="button" onClick={() => onSpeak(gameInstruction("culture", language).audioText)}>✋ Repeat</button>
             <button type="button" onClick={() => answer(question.options[active]!)}>
               👍 Select {question.options[active]}
             </button>
@@ -2169,8 +2396,8 @@ function CultureGame({
       {lastOk !== null ? (
         <QuestAnswerFeedback
           outcome={lastOk ? "correct" : "wrong"}
-          headline={lastOk ? "Correct!" : "Good try"}
-          detail={lastOk ? question.fact : `Here is a hint: ${question.fact}`}
+          headline={lastOk ? uiStr("correct", language) : uiStr("try_again", language)}
+          detail={pickText(question.fact, language)}
           accessibility={accessibility}
           onSpeak={onSpeak}
         />
@@ -2185,6 +2412,7 @@ function GameShell({
   accessibility,
   onSpeak,
   onRegisterInstruction,
+  language,
   children,
 }: {
   title: string;
@@ -2192,6 +2420,7 @@ function GameShell({
   accessibility: AccessibilitySettings;
   onSpeak: (text: string) => void;
   onRegisterInstruction?: (info: { title: string; hint: string }) => void;
+  language: Language;
   children: React.ReactNode;
 }) {
   const [explainSimpler, setExplainSimpler] = useState(false);
@@ -2212,7 +2441,7 @@ function GameShell({
   return (
     <section className="screen game-screen">
       <div className="game-header">
-        <p className="eyebrow">Educational quest</p>
+        <p className="eyebrow">{uiStr("game_eyebrow", language)}</p>
         <h2>{title}</h2>
       </div>
       <div className="bota-bubble">
@@ -2222,15 +2451,15 @@ function GameShell({
       <div className="instruction-toolbar">
         {accessibility.voiceInstructions && (
           <button type="button" onClick={() => onSpeak(instruction.audioText)}>
-            🔊 Read aloud
+            {uiStr("game_read_aloud", language)}
           </button>
         )}
         <button type="button" className="instruction-explain" onClick={handleExplainSimpler}>
-          Explain simpler
+          {uiStr("game_explain_simpler", language)}
         </button>
       </div>
-      {accessibility.textHints && <p className="hint">Take your time! There's no rush. Audio is optional.</p>}
-      {accessibility.noTimer && <p className="status">No timer — go at your own pace!</p>}
+      {accessibility.textHints && <p className="hint">{uiStr("game_hint_no_rush", language)}</p>}
+      {accessibility.noTimer && <p className="status">{uiStr("game_no_timer", language)}</p>}
       {children}
     </section>
   );
