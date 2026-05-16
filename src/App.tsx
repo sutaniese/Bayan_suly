@@ -1117,7 +1117,7 @@ function ParentDashboard({
         <button onClick={onAlbum}>Open Sticker Album</button>
       </div>
       <div className="cta-row">
-        <button className="primary" onClick={onSettings}>♿ Qolaily Settings</button>
+        <button className="primary" onClick={onSettings}>♿ Learning Comfort Profile</button>
         <button onClick={onQr}>📦 QR Unlock</button>
       </div>
       <div className="danger-zone">
@@ -1152,8 +1152,8 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
   return (
     <section className="screen">
       <p className="eyebrow">Qolaily Mode</p>
-      <h2>♿ Accessibility Settings</h2>
-      <p className="lead">Make the app comfortable for every child.</p>
+      <h2>♿ Learning Comfort Profile</h2>
+      <p className="lead">Let’s make the app comfortable for your child. You can change these anytime in Parent Mode.</p>
       <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.accessibility[key]} onChange={() => set(key)} /></label>)}</div>
       <button className="primary" onClick={onBack}>← Back to Parent Mode</button>
     </section>
