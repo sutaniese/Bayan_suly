@@ -17,7 +17,7 @@ function localMatch(raw: string): string | null {
   const t = normalize(raw);
   const has = (...p: string[]) => p.some((w) => t.includes(w));
   if (has("open map", "map", "карта", "открой карту", "картаны аш")) return "open_map";
-  if (has("open memory", "memory game", "almaty", "алматы", "жад ойыны")) return "open_memory_game";
+  if (has("open memory", "memory game", "memor", "almaty", "алматы", "жад ойыны")) return "open_memory_game";
   if (has("open word", "word game", "turkestan", "туркестан", "слова", "сөз ойыны")) return "open_words_game";
   if (has("open math", "math game", "astana", "астана", "математика", "санау ойыны")) return "open_math_game";
   if (has("open pattern", "pattern game", "karaganda", "караганда", "узор")) return "open_patterns_game";

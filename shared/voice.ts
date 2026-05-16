@@ -46,7 +46,7 @@ export function matchVoiceCommand(rawTranscript: string): VoiceCommand | null {
   const hasAny = (...phrases: string[]) => phrases.some((phrase) => text.includes(phrase));
 
   if (hasAny("open map", "map", "карта", "открой карту", "аш картаны", "картаны аш")) return "open_map";
-  if (hasAny("open memory", "memory game", "almaty", "алматы", "ойын память", "жад ойыны")) return "open_memory_game";
+  if (hasAny("open memory", "memory game", "memor", "almaty", "алматы", "ойын память", "жад ойыны")) return "open_memory_game";
   if (hasAny("open word", "word game", "turkestan", "туркестан", "түркістан", "слова", "сөз ойыны")) return "open_words_game";
   if (hasAny("open math", "math game", "astana", "астана", "математика", "санау ойыны")) return "open_math_game";
   if (hasAny("open pattern", "pattern game", "karaganda", "караганда", "қарағанды", "узор", "pattern")) return "open_patterns_game";
