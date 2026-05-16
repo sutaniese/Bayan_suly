@@ -16,6 +16,8 @@ import {
   SESSION_ACTIVITY_LABELS,
   SESSION_SKILL_LABELS,
   SKILL_GARDEN,
+  buildAccessibilitySettings,
+  buildRecommendationSummary,
   getGrowthStage,
   sessionHasLearningActivity,
   skillPracticeSummaryForGame,
@@ -370,15 +372,16 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
   const startWithNeeds = (needs: SupportNeed[], setupSource: "manual" | "default" | "mock_document") => {
     const base = makeProfile(name.trim() || "Bota Friend", age, language);
     const cleanNeeds = needs.length ? needs : (["standard"] as SupportNeed[]);
-    const enabled = cleanNeeds.some((n) => n !== "standard");
+    const settings = buildAccessibilitySettings(cleanNeeds);
+    const recommendationSummary = buildRecommendationSummary(cleanNeeds, settings);
     onStart({
       ...base,
       adaptiveProfile: {
         ...base.adaptiveProfile,
         supportNeeds: cleanNeeds,
         setupSource,
-        settings: { ...base.adaptiveProfile.settings, enabled },
-        recommendationSummary: [],
+        settings,
+        recommendationSummary,
       },
     });
   };
@@ -437,6 +440,22 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
           <p className="eyebrow">Learning Comfort Setup</p>
           <h2>Make Botara comfortable for your child</h2>
           <p className="lead">Choose how the app should adapt. You can change this later in Parent Mode.</p>
+
+          {(() => {
+            const settings = buildAccessibilitySettings(normalizedNeeds);
+            const summary = buildRecommendationSummary(normalizedNeeds, settings);
+            if (!summary.length) return null;
+            return (
+              <div className="panel">
+                <strong>What will change</strong>
+                <ul className="recommendation-list">
+                  {summary.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           <div className="support-grid" role="group" aria-label="Support needs">
             {(
