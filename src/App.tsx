@@ -614,7 +614,8 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
   const [age, setAge] = useState<Age>(8);
   const [language, setLanguage] = useState<Language>("kz");
   const [supportNeeds, setSupportNeeds] = useState<SupportNeed[]>(["standard"]);
-  const [showMockInfo, setShowMockInfo] = useState(false);
+  const [showMockRecommendation, setShowMockRecommendation] = useState(false);
+  const [mockProcessing, setMockProcessing] = useState(false);
 
   const normalizedNeeds = useMemo(() => {
     const needs = supportNeeds.length ? supportNeeds : (["standard"] as SupportNeed[]);
@@ -649,6 +650,15 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
         recommendationSummary,
       },
     });
+  };
+
+  const useSampleRecommendation = () => {
+    if (mockProcessing) return;
+    setMockProcessing(true);
+    window.setTimeout(() => {
+      setMockProcessing(false);
+      startWithNeeds(["vision", "focus"], "mock_document");
+    }, 1000);
   };
 
   const nextFromProfile = (event: FormEvent) => {
@@ -760,17 +770,29 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
             </button>
           </div>
 
-          <button type="button" onClick={() => setShowMockInfo((v) => !v)} aria-expanded={showMockInfo}>
-            Add specialist recommendation (mock)
+          <button type="button" onClick={() => setShowMockRecommendation((v) => !v)} aria-expanded={showMockRecommendation}>
+            Optional recommendation
           </button>
 
-          {showMockInfo && (
-            <div className="panel">
-              <strong>Optional (demo)</strong>
+          {showMockRecommendation && (
+            <div className="panel" aria-live="polite">
+              <strong>Optional recommendation</strong>
               <p className="lead">
-                Optional: You can add a specialist recommendation to help configure the app. In this MVP, the file is not stored or processed. You can
-                also set everything manually.
+                In the future, Botara could use a specialist recommendation to suggest accessibility settings. For this MVP, uploaded files are not stored
+                or processed.
               </p>
+              {mockProcessing ? <p className="status">Using sample recommendation…</p> : null}
+              <div className="cta-row">
+                <button className="primary" type="button" onClick={useSampleRecommendation} disabled={mockProcessing}>
+                  Use sample recommendation
+                </button>
+                <button type="button" onClick={() => setShowMockRecommendation(false)} disabled={mockProcessing}>
+                  Continue with manual setup
+                </button>
+                <button type="button" onClick={() => setShowMockRecommendation(false)} disabled={mockProcessing}>
+                  Skip
+                </button>
+              </div>
             </div>
           )}
 
