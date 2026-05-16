@@ -43,10 +43,36 @@ import type {
 import { cancelGroqPlayback, tryPlayGroqSpeech } from "./groqTts";
 import { GentleNotice, QuestAnswerFeedback, RewardEarnedBanner } from "./multimodalFeedback";
 
+type SpeechRecognitionAlternative = { transcript?: string };
+type SpeechRecognitionResultLike = ArrayLike<SpeechRecognitionAlternative>;
+type SpeechRecognitionEventLike = { results: ArrayLike<SpeechRecognitionResultLike> };
+type SpeechRecognitionErrorEventLike = { error?: string };
+type BrowserSpeechRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition;
+
 type VoiceCommand =
   | "open_map"
+  | "open_memory_game"
   | "open_words_game"
+  | "open_math_game"
+  | "open_patterns_game"
+  | "open_culture_game"
   | "open_rewards"
+  | "open_album"
+  | "open_garden"
+  | "open_qr"
+  | "open_daily_chest"
   | "repeat_instruction"
   | "show_coins"
   | "open_parent_mode"
@@ -111,6 +137,61 @@ type Reward = {
   code?: string;
   discount?: string;
 };
+
+function getSpeechRecognitionCtor(): BrowserSpeechRecognitionCtor | null {
+  const speechWindow = window as Window & {
+    SpeechRecognition?: BrowserSpeechRecognitionCtor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
+  };
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+}
+
+function normalizeVoiceTranscript(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchVoiceCommand(rawTranscript: string): VoiceCommand | null {
+  const text = normalizeVoiceTranscript(rawTranscript);
+  const hasAny = (...phrases: string[]) => phrases.some((phrase) => text.includes(phrase));
+
+  if (hasAny("open map", "map", "карта", "открой карту", "аш картаны", "картаны аш")) return "open_map";
+  if (hasAny("open memory", "memory game", "almaty", "алматы", "ойын память", "жад ойыны")) return "open_memory_game";
+  if (hasAny("open word", "word game", "turkestan", "туркестан", "түркістан", "слова", "сөз ойыны")) return "open_words_game";
+  if (hasAny("open math", "math game", "astana", "астана", "математика", "санау ойыны")) return "open_math_game";
+  if (hasAny("open pattern", "pattern game", "karaganda", "караганда", "қарағанды", "узор", "pattern")) return "open_patterns_game";
+  if (hasAny("open culture", "culture game", "shymkent", "шимкент", "шымкент", "culture match", "мәдениет")) return "open_culture_game";
+  if (hasAny("open rewards", "rewards", "награды", "сыйлық", "сыйлықтар")) return "open_rewards";
+  if (hasAny("open album", "album", "альбом", "жинақ")) return "open_album";
+  if (hasAny("open garden", "garden", "сад", "бақ", "skill garden")) return "open_garden";
+  if (hasAny("open qr", "scan package", "qr", "куар", "скан", "пакет")) return "open_qr";
+  if (hasAny("open chest", "daily chest", "сундук", "сандық")) return "open_daily_chest";
+  if (hasAny("repeat", "repeat instruction", "повтори", "повтори инструкцию", "қайтала", "нұсқауды қайтала")) return "repeat_instruction";
+  if (hasAny("coins", "how many coins", "монеты", "сколько монет", "тиын", "coin")) return "show_coins";
+  if (hasAny("parent", "call parent", "родитель", "родительский режим", "ата ана", "ата ана режимі")) return "open_parent_mode";
+  if (hasAny("large text", "turn on large text", "крупный текст", "үлкен мәтін")) return "enable_large_text";
+
+  return null;
+}
+
+function voiceRecognitionErrorMessage(error?: string): string {
+  switch (error) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Microphone permission is blocked.";
+    case "audio-capture":
+      return "No microphone was found.";
+    case "network":
+      return "Voice recognition had a network problem.";
+    case "no-speech":
+      return "I did not hear anything. Please try again.";
+    default:
+      return "Voice recognition could not understand that.";
+  }
+}
 
 const locations: Location[] = [
   // City coordinates use real-world lat/lon (GeoNames/OSM-level precision) and are projected into the map.
@@ -486,14 +567,29 @@ function BotaVoiceGuide({
 }) {
   const [open, setOpen] = useState(false);
   const [coinFlash, setCoinFlash] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [listenStatus, setListenStatus] = useState<string | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const settings = profile.adaptiveProfile.settings;
-  const enabled = settings.botaVoiceGuide || settings.voiceInstructions;
+  const enabled = settings.botaVoiceGuide || settings.voiceInstructions || settings.voiceNavigation;
   const hidden =
     view === "onboarding" ||
     view === "adaptive-profile-result" ||
     view === "parent-pin" ||
     view === "parent" ||
     view === "accessibility";
+
+  const stopListening = () => {
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    setIsListening(false);
+  };
+
+  useEffect(() => {
+    if (!enabled || hidden) stopListening();
+    return () => recognitionRef.current?.abort();
+  }, [enabled, hidden]);
+
   if (!enabled || hidden) return null;
 
   const confirmIfVoice = (phrase: string) => {
@@ -506,13 +602,45 @@ function BotaVoiceGuide({
         setView("map");
         confirmIfVoice("Opening the map.");
         break;
+      case "open_memory_game":
+        setView("memory");
+        confirmIfVoice("Opening Collect the Sweets.");
+        break;
       case "open_words_game":
         setView("words");
         confirmIfVoice("Opening Find the Kazakh Word.");
         break;
+      case "open_math_game":
+        setView("math");
+        confirmIfVoice("Opening Counting with Bota.");
+        break;
+      case "open_patterns_game":
+        setView("patterns");
+        confirmIfVoice("Opening Pattern Caravan.");
+        break;
+      case "open_culture_game":
+        setView("culture");
+        confirmIfVoice("Opening Culture Match.");
+        break;
       case "open_rewards":
         setView("rewards");
         confirmIfVoice("Opening rewards.");
+        break;
+      case "open_album":
+        setView("album");
+        confirmIfVoice("Opening the sticker album.");
+        break;
+      case "open_garden":
+        setView("garden");
+        confirmIfVoice("Opening the skill garden.");
+        break;
+      case "open_qr":
+        setView("qr");
+        confirmIfVoice("Opening package collection.");
+        break;
+      case "open_daily_chest":
+        setView("daily-chest");
+        confirmIfVoice("Opening the daily chest.");
         break;
       case "repeat_instruction": {
         const { hint, title } = lastInstructionRef.current;
@@ -550,10 +678,94 @@ function BotaVoiceGuide({
     setOpen(false);
   };
 
+  const startListening = () => {
+    const RecognitionCtor = getSpeechRecognitionCtor();
+    if (!RecognitionCtor) {
+      const line = "Voice control is not supported in this browser.";
+      setListenStatus(line);
+      confirmIfVoice(line);
+      return;
+    }
+
+    if (isListening) {
+      stopListening();
+      setListenStatus("Stopped listening.");
+      return;
+    }
+
+    try {
+      cancelGroqPlayback();
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
+      const recognition = new RecognitionCtor();
+      recognition.lang = profile.language === "kz" ? "kk-KZ" : "ru-RU";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognitionRef.current = recognition;
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0]?.transcript ?? "")
+          .join(" ")
+          .trim();
+        setIsListening(false);
+        recognitionRef.current = null;
+        if (!transcript) {
+          setListenStatus("I did not hear a command.");
+          return;
+        }
+
+        const cmd = matchVoiceCommand(transcript);
+        if (!cmd) {
+          const line = `I heard "${transcript}", but I don't know that command yet.`;
+          setListenStatus(line);
+          confirmIfVoice(line);
+          return;
+        }
+
+        setListenStatus(`Heard: ${transcript}`);
+        run(cmd);
+      };
+
+      recognition.onerror = (event) => {
+        recognitionRef.current = null;
+        setIsListening(false);
+        const line = voiceRecognitionErrorMessage(event.error);
+        setListenStatus(line);
+        confirmIfVoice(line);
+      };
+
+      recognition.onend = () => {
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
+        setIsListening(false);
+      };
+
+      setOpen(true);
+      setIsListening(true);
+      setListenStatus("Listening for a command...");
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      recognitionRef.current = null;
+      const line = "Voice control could not start.";
+      setListenStatus(line);
+      confirmIfVoice(line);
+    }
+  };
+
   const chips: { cmd: VoiceCommand; label: string }[] = [
     { cmd: "open_map", label: "Open map" },
+    { cmd: "open_memory_game", label: "Open memory game" },
     { cmd: "open_words_game", label: "Open word game" },
+    { cmd: "open_math_game", label: "Open math game" },
+    { cmd: "open_patterns_game", label: "Open pattern game" },
+    { cmd: "open_culture_game", label: "Open culture game" },
     { cmd: "open_rewards", label: "Open rewards" },
+    { cmd: "open_album", label: "Open album" },
+    { cmd: "open_garden", label: "Open garden" },
+    { cmd: "open_qr", label: "Open QR" },
+    { cmd: "open_daily_chest", label: "Open chest" },
     { cmd: "repeat_instruction", label: "Repeat instruction" },
     { cmd: "show_coins", label: "How many coins?" },
     { cmd: "open_parent_mode", label: "Call parent" },
@@ -570,7 +782,20 @@ function BotaVoiceGuide({
               ✕
             </button>
           </div>
-          <p className="voice-guide-lead">Tap a command. Everything works with buttons — voice is optional.</p>
+          <p className="voice-guide-lead">Tap a command or use the microphone. Everything still works with buttons if voice is unavailable.</p>
+          {settings.voiceNavigation && (
+            <div className="voice-guide-actions">
+              <button
+                type="button"
+                className={`voice-guide-listen ${isListening ? "listening" : ""}`}
+                onClick={startListening}
+                aria-pressed={isListening}
+              >
+                {isListening ? "Stop listening" : "Start listening"}
+              </button>
+              <small>Try: "open map", "open rewards", "show coins"</small>
+            </div>
+          )}
           <div className="voice-guide-chips">
             {chips.map(({ cmd, label }) => (
               <button key={cmd} type="button" className="voice-guide-chip" onClick={() => run(cmd)}>
@@ -578,6 +803,7 @@ function BotaVoiceGuide({
               </button>
             ))}
           </div>
+          {listenStatus && <p className="voice-guide-status" role="status">{listenStatus}</p>}
           {coinFlash && <p className="voice-guide-status" role="status">{coinFlash}</p>}
         </div>
       )}
@@ -866,6 +1092,7 @@ function AdaptiveProfileResult({ profile, onContinue }: { profile: UserProfile; 
     settings.textHints ? "Text hints" : null,
     settings.subtitles ? "Subtitles" : null,
     settings.voiceInstructions ? "Voice instructions" : null,
+    settings.voiceNavigation ? "Voice navigation" : null,
     settings.noTimer ? "No timer" : null,
     settings.reducedAnimations ? "Reduced animations" : null,
     settings.gestureAnswerMode ? "Gesture Answer Mode (mock)" : null,
@@ -2073,6 +2300,7 @@ function ParentDashboard({
       settings.largeButtons ? "Large buttons" : null,
       settings.highContrast ? "High contrast" : null,
       settings.voiceInstructions ? "Voice instructions" : null,
+      settings.voiceNavigation ? "Voice navigation" : null,
       settings.textHints ? "Text hints" : null,
       settings.noTimer ? "No timer" : null,
       settings.reducedAnimations ? "Reduced animations" : null,
@@ -2170,6 +2398,7 @@ function ParentDashboard({
               ["largeButtons", "Large Buttons"],
               ["highContrast", "High Contrast"],
               ["voiceInstructions", "Voice Instructions"],
+              ["voiceNavigation", "Voice Navigation"],
               ["textHints", "Text Hints"],
               ["noTimer", "No Timer"],
               ["reducedAnimations", "Reduced Animations"],
@@ -2228,6 +2457,7 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
     ["highContrast", "High Contrast"],
     ["textHints", "Text Hints"],
     ["voiceInstructions", "Voice Instructions"],
+    ["voiceNavigation", "Voice Navigation"],
     ["botaVoiceGuide", "Bota Voice Guide"],
     ["simplifiedInstructions", "Simpler instructions"],
     ["noTimer", "No Timer"],

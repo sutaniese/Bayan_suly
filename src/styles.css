@@ -248,6 +248,28 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   line-height: 1.4;
 }
 
+.voice-guide-actions {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.voice-guide-actions small {
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.voice-guide-listen {
+  min-height: 48px;
+  background: linear-gradient(145deg, #fff8e1, #ffe0b2);
+  border: 2px solid rgba(255, 112, 67, 0.3);
+  font-weight: 900;
+}
+
+.voice-guide-listen.listening {
+  background: linear-gradient(145deg, #ffccbc, #ffab91);
+  border-color: rgba(230, 74, 25, 0.55);
+}
+
 .voice-guide-chips {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1843,6 +1865,14 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 }
 .high-contrast .voice-guide-lead {
   color: #fff;
+}
+.high-contrast .voice-guide-actions small {
+  color: #fff;
+}
+.high-contrast .voice-guide-listen {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #fff;
 }
 .high-contrast .voice-guide-chip {
   background: #1a1a1a;

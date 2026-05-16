@@ -307,6 +307,10 @@ export function buildRecommendationSummary(needs: SupportNeed[], settings: Acces
     lines.push("Voice instructions and Bota Voice Guide enabled (audio is optional).");
   }
 
+  if (settings.voiceNavigation) {
+    lines.push("Voice navigation enabled for simple spoken commands.");
+  }
+
   if (settings.subtitles) lines.push("Subtitles and text hints enabled so learning never depends only on sound.");
 
   if (settings.noTimer) lines.push("Timers removed to reduce pressure.");
