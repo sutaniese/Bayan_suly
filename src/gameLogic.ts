@@ -46,6 +46,73 @@ export type QrItem = {
   unlockMessage: string;
 };
 
+export const STICKERS: Sticker[] = [
+  {
+    id: "sticker-bota",
+    title: "Bota Explorer",
+    description: "You started your journey with Bota.",
+    category: "bota",
+    unlockType: "game",
+    imageEmoji: "🐫",
+  },
+  {
+    id: "sticker-baiterek",
+    title: "Baiterek",
+    description: "A famous symbol of Astana.",
+    category: "city",
+    unlockType: "game",
+    imageEmoji: "🏙️",
+  },
+  {
+    id: "sticker-almaty-mountains",
+    title: "Almaty Mountains",
+    description: "You explored the mountains near Almaty.",
+    category: "nature",
+    unlockType: "game",
+    imageEmoji: "⛰️",
+  },
+  {
+    id: "sticker-turkestan",
+    title: "Turkestan",
+    description: "You discovered a historic city of Kazakhstan.",
+    category: "culture",
+    unlockType: "game",
+    imageEmoji: "🕌",
+  },
+  {
+    id: "sticker-dombyra",
+    title: "Dombyra",
+    description: "A traditional Kazakh musical instrument.",
+    category: "culture",
+    unlockType: "daily_chest",
+    imageEmoji: "🎵",
+  },
+  {
+    id: "sticker-yurt",
+    title: "Yurt",
+    description: "A traditional home of nomadic people.",
+    category: "culture",
+    unlockType: "daily_chest",
+    imageEmoji: "⛺",
+  },
+  {
+    id: "sticker-bota-pack",
+    title: "Bota Package",
+    description: "Unlocked from a Bota product package.",
+    category: "product",
+    unlockType: "qr",
+    imageEmoji: "🍬",
+  },
+  {
+    id: "sticker-skill-garden",
+    title: "Skill Garden",
+    description: "Your learning garden is growing.",
+    category: "bota",
+    unlockType: "skill",
+    imageEmoji: "🌱",
+  },
+];
+
 export type UserProfile = {
   name: string;
   age: Age;
@@ -143,16 +210,12 @@ export type DailyChestReward = {
   coins: number;
   fact: string;
   stickerId?: string;
-  stickerTitle?: string;
-  stickerEmoji?: string;
 };
 
 export const DAILY_CHEST_REWARD: DailyChestReward = {
   coins: 10,
-  fact: "Baiterek is one of the most famous symbols of Astana.",
-  stickerId: "sticker-baiterek",
-  stickerTitle: "Baiterek Sticker",
-  stickerEmoji: "🏙️",
+  fact: "The dombyra is a traditional Kazakh musical instrument.",
+  stickerId: "sticker-dombyra",
 };
 
 export function applyDailyChest(profile: UserProfile, date: string, reward: DailyChestReward = DAILY_CHEST_REWARD) {
@@ -186,10 +249,20 @@ export function applyDailyChest(profile: UserProfile, date: string, reward: Dail
   };
 }
 
-export function applyGameAward(profile: UserProfile, gameId: string, badge: string | undefined, baseCoins = 20, bonus = 10) {
+export function applyGameAward(
+  profile: UserProfile,
+  gameId: string,
+  badge: string | undefined,
+  baseCoins = 20,
+  bonus = 10,
+  stickerId?: string,
+) {
   const eventId = `game:${gameId}`;
   const alreadyAwarded = profile.awardedEvents.includes(eventId);
   const coinsEarned = alreadyAwarded ? 0 : baseCoins + bonus;
+  const unlockedStickers = stickerId
+    ? Array.from(new Set([...profile.unlockedStickers, stickerId]))
+    : profile.unlockedStickers;
 
   return {
     profile: {
@@ -197,6 +270,7 @@ export function applyGameAward(profile: UserProfile, gameId: string, badge: stri
       coins: profile.coins + coinsEarned,
       completedGames: Array.from(new Set([...profile.completedGames, gameId])),
       badges: badge ? Array.from(new Set([...profile.badges, badge])) : profile.badges,
+      unlockedStickers,
       awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, eventId],
     },
     coinsEarned,
@@ -206,10 +280,12 @@ export function applyGameAward(profile: UserProfile, gameId: string, badge: stri
 
 export function applyQrUnlock(profile: UserProfile): UserProfile {
   const alreadyAwarded = profile.awardedEvents.includes("qr:secret");
+  const unlockedStickers = Array.from(new Set([...profile.unlockedStickers, "sticker-bota-pack"]));
   return {
     ...profile,
     coins: profile.coins + (alreadyAwarded ? 0 : 15),
     unlockedLocations: Array.from(new Set([...profile.unlockedLocations, "secret"])),
+    unlockedStickers,
     awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, "qr:secret"],
   };
 }

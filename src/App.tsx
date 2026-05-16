@@ -3,6 +3,7 @@ import {
   CORE_LOCATION_IDS,
   STORAGE_KEY,
   DAILY_CHEST_REWARD,
+  STICKERS,
   applyDailyChest,
   applyGameAward,
   applyQrUnlock,
@@ -24,6 +25,7 @@ type View =
   | "result"
   | "rewards"
   | "daily-chest"
+  | "album"
   | "parent-pin"
   | "parent"
   | "accessibility"
@@ -158,16 +160,25 @@ function App() {
       .join(" ");
   }, [profile]);
 
-  const awardGame = (game: Omit<GameResult, "coinsEarned" | "completedAt" | "alreadyAwarded">, baseCoins = 20, bonus = 10) => {
+  const awardGame = (
+    game: Omit<GameResult, "coinsEarned" | "completedAt" | "alreadyAwarded">,
+    baseCoins = 20,
+    bonus = 10,
+    stickerId?: string,
+  ) => {
     if (!profile) return;
-    const award = applyGameAward(profile, game.gameId, game.badge, baseCoins, bonus);
+    const award = applyGameAward(profile, game.gameId, game.badge, baseCoins, bonus, stickerId);
+    const nextProfile = {
+      ...award.profile,
+      unlockedStickers: Array.from(new Set([...award.profile.unlockedStickers, "sticker-bota"])),
+    };
     const nextResult = {
       ...game,
       coinsEarned: award.coinsEarned,
       completedAt: new Date().toISOString(),
       alreadyAwarded: award.alreadyAwarded,
     };
-    setProfile(award.profile);
+    setProfile(nextProfile);
     setResult(nextResult);
     setView("result");
   };
@@ -205,16 +216,17 @@ function App() {
         )}
         {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
         {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
-        {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" })} onSpeak={speak} />}
-        {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-        {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0)} onSpeak={speak} />}
+        {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
+        {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
+        {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
         {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
         {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-        {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} />}
-        {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onParent={() => setView("parent-pin")} />}
+        {profile && view === "result" && result && <ResultScreen result={result} onMap={() => setView("map")} onRewards={() => setView("rewards")} onAlbum={() => setView("album")} />}
+        {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
         {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
+        {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
         {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
-        {profile && view === "parent" && <ParentDashboard profile={profile} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
+        {profile && view === "parent" && <ParentDashboard profile={profile} onAlbum={() => setView("album")} onSettings={() => setView("accessibility")} onQr={() => setView("qr")} onReset={resetProgress} />}
         {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
         {profile && view === "qr" && <QrUnlock profile={profile} onUnlock={unlockQr} onSecret={() => setView("secret")} />}
         {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
@@ -357,6 +369,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
             </button>
           </div>
           <div className="cta-row">
+            <button onClick={() => onGo("album")}>📔 Sticker Album</button>
             <button onClick={() => onGo("qr")}>📦 Scan Package</button>
             <button onClick={() => onGo("rewards")}>🎁 Rewards</button>
           </div>
@@ -380,6 +393,7 @@ function DailyChest({
   const today = getToday();
   const opened = profile.openedDailyChestDates.includes(today);
   const reward = DAILY_CHEST_REWARD;
+  const rewardSticker = reward.stickerId ? STICKERS.find((sticker) => sticker.id === reward.stickerId) : null;
 
   return (
     <section className="screen center daily-chest-screen">
@@ -401,8 +415,8 @@ function DailyChest({
         <>
           <div className="daily-reward">
             <div className="coin-earned">🪙 +{reward.coins}</div>
-            {reward.stickerTitle && (
-              <div className="sticker-pill">{reward.stickerEmoji} {reward.stickerTitle}</div>
+            {rewardSticker && (
+              <div className="sticker-pill">{rewardSticker.imageEmoji} {rewardSticker.title}</div>
             )}
           </div>
           <div className="fact-card">
@@ -428,6 +442,48 @@ function DailyChest({
         </>
       )}
       <button onClick={onBack}>Back to Map</button>
+    </section>
+  );
+}
+
+function StickerAlbum({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const unlockedSet = new Set(profile.unlockedStickers);
+  const unlockedCount = profile.unlockedStickers.length;
+  const activeSticker = activeId ? STICKERS.find((sticker) => sticker.id === activeId) : null;
+  const activeUnlocked = activeSticker ? unlockedSet.has(activeSticker.id) : false;
+  const detailText = activeSticker
+    ? activeUnlocked
+      ? activeSticker.description
+      : "Keep playing quests to unlock this sticker."
+    : "Tap a sticker to see its story.";
+
+  return (
+    <section className="screen album-screen">
+      <p className="eyebrow">My Kazakhstan Album</p>
+      <h2>My Kazakhstan Album</h2>
+      <p className="lead">Collect stickers by exploring cities, opening the daily chest, and scanning packages.</p>
+      <div className="album-progress">{unlockedCount}/{STICKERS.length} stickers collected</div>
+      <div className="album-grid">
+        {STICKERS.map((sticker) => {
+          const unlocked = unlockedSet.has(sticker.id);
+          return (
+            <button
+              key={sticker.id}
+              className={`sticker-card ${unlocked ? "unlocked" : "locked"}`}
+              onClick={() => setActiveId(sticker.id)}
+            >
+              <span className="sticker-emoji">{unlocked ? sticker.imageEmoji : "❔"}</span>
+              <span className="sticker-title">{unlocked ? sticker.title : "Locked"}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="sticker-detail">
+        <strong>{activeSticker ? activeSticker.title : "Sticker details"}</strong>
+        <p>{detailText}</p>
+      </div>
+      <button className="primary" onClick={onBack}>Back to Map</button>
     </section>
   );
 }
@@ -609,7 +665,17 @@ function GameShell({ title, hint, accessibility, onSpeak, children }: { title: s
   );
 }
 
-function ResultScreen({ result, onMap, onRewards }: { result: GameResult; onMap: () => void; onRewards: () => void }) {
+function ResultScreen({
+  result,
+  onMap,
+  onRewards,
+  onAlbum,
+}: {
+  result: GameResult;
+  onMap: () => void;
+  onRewards: () => void;
+  onAlbum: () => void;
+}) {
   const great = result.score >= 80;
   return (
     <section className="screen center">
@@ -633,12 +699,23 @@ function ResultScreen({ result, onMap, onRewards }: { result: GameResult; onMap:
       <div className="cta-row">
         <button className="primary" onClick={onMap}>Back to Map 🗺️</button>
         <button onClick={onRewards}>Rewards 🎁</button>
+        <button onClick={onAlbum}>Sticker Album 📔</button>
       </div>
     </section>
   );
 }
 
-function RewardsShop({ profile, onMap, onParent }: { profile: UserProfile; onMap: () => void; onParent: () => void }) {
+function RewardsShop({
+  profile,
+  onMap,
+  onAlbum,
+  onParent,
+}: {
+  profile: UserProfile;
+  onMap: () => void;
+  onAlbum: () => void;
+  onParent: () => void;
+}) {
   const unlockedRewards = rewards.filter((reward) => reward.type === "qr_bonus" ? profile.unlockedLocations.includes("secret") : profile.coins >= reward.cost);
   const nextReward = rewards.find((reward) => reward.cost > profile.coins && reward.type !== "qr_bonus");
   const couponReward = rewards.find((reward) => reward.id === "coupon");
@@ -652,6 +729,9 @@ function RewardsShop({ profile, onMap, onParent }: { profile: UserProfile; onMap
           <p className="eyebrow">Rewards shop</p>
           <h2>Your Bota Rewards 🎁</h2>
           <p className="lead">Play quests to earn coins and unlock cool rewards, badges, and coupons!</p>
+          <div className="cta-row">
+            <button onClick={onAlbum}>Sticker Album 📔</button>
+          </div>
         </div>
         <div className="coin-wallet">
           <span>{profile.coins}</span>
@@ -723,7 +803,19 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ParentDashboard({ profile, onSettings, onQr, onReset }: { profile: UserProfile; onSettings: () => void; onQr: () => void; onReset: () => void }) {
+function ParentDashboard({
+  profile,
+  onAlbum,
+  onSettings,
+  onQr,
+  onReset,
+}: {
+  profile: UserProfile;
+  onAlbum: () => void;
+  onSettings: () => void;
+  onQr: () => void;
+  onReset: () => void;
+}) {
   const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
   const [confirmReset, setConfirmReset] = useState(false);
   return (
@@ -743,6 +835,9 @@ function ParentDashboard({ profile, onSettings, onQr, onReset }: { profile: User
         <p>{skills.length ? Array.from(new Set(skills)).join(", ") : "Start a quest to train skills"}</p>
         <strong>Badges</strong>
         <p>{profile.badges.length ? profile.badges.join(", ") : "No badges yet"}</p>
+        <strong>Sticker album</strong>
+        <p>{profile.unlockedStickers.length}/{STICKERS.length} stickers collected</p>
+        <button onClick={onAlbum}>Open Sticker Album</button>
       </div>
       <div className="cta-row">
         <button className="primary" onClick={onSettings}>♿ Qolaily Settings</button>

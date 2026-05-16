@@ -561,6 +561,61 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   color: var(--text-main);
 }
 
+.album-screen { gap: 1rem; }
+
+.album-progress {
+  align-self: start;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: #FFF3C4;
+  font-weight: 900;
+  color: #A86100;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.08);
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+
+.sticker-card {
+  display: grid;
+  gap: 0.4rem;
+  align-content: center;
+  justify-items: center;
+  min-height: 130px;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(0,0,0,0.06);
+  background: #FFFDF7;
+  text-align: center;
+  font-weight: 900;
+}
+
+.sticker-card.locked {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+
+.sticker-emoji {
+  font-size: 2.2rem;
+}
+
+.sticker-title {
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.sticker-detail {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  background: #FFF8E1;
+  border: 2px solid rgba(255, 193, 7, 0.2);
+  font-weight: 700;
+}
+
 .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; }
 
 .memory-card {
@@ -901,7 +956,8 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .panel, .high-contrast .reward, .high-contrast .question-card,
 .high-contrast .stats span, .high-contrast .toggle, .high-contrast input,
 .high-contrast select, .high-contrast .guide-card, .high-contrast .bota-bubble,
-.high-contrast .daily-chest-card, .high-contrast .fact-card, .high-contrast .sticker-pill {
+.high-contrast .daily-chest-card, .high-contrast .fact-card, .high-contrast .sticker-pill,
+.high-contrast .sticker-card, .high-contrast .sticker-detail, .high-contrast .album-progress {
   background: #111; color: #fff; border-color: #fff;
 }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,

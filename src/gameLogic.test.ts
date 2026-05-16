@@ -11,13 +11,14 @@ import {
 
 describe("game reward rules", () => {
   it("awards completion and bonus coins once per game", () => {
-    const first = applyGameAward(makeProfile("Amina", 8, "kz"), "memory", "Memory Master", 20, 10);
+    const first = applyGameAward(makeProfile("Amina", 8, "kz"), "memory", "Memory Master", 20, 10, "sticker-almaty-mountains");
     const second = applyGameAward(first.profile, "memory", "Memory Master", 20, 10);
 
     expect(first.coinsEarned).toBe(30);
     expect(first.profile.coins).toBe(30);
     expect(first.profile.completedGames).toEqual(["memory"]);
     expect(first.profile.badges).toEqual(["Memory Master"]);
+    expect(first.profile.unlockedStickers).toContain("sticker-almaty-mountains");
     expect(second.coinsEarned).toBe(0);
     expect(second.profile.coins).toBe(30);
   });
