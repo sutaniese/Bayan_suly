@@ -231,6 +231,59 @@ export const SKILL_GARDEN = [
   { skill: "culture" as const, label: "Kazakhstan Culture", visual: "☀️", description: "Grows when you discover facts about Kazakhstan." },
 ];
 
+export function buildAccessibilitySettings(needs: SupportNeed[]): AccessibilitySettings {
+  const uniq = Array.from(new Set(needs));
+  const clean = uniq.length ? uniq : (["standard"] as SupportNeed[]);
+  const onlyStandard = clean.length === 1 && clean[0] === "standard";
+  if (onlyStandard) return { ...DEFAULT_ACCESSIBILITY_SETTINGS, enabled: false };
+
+  const base: AccessibilitySettings = { ...DEFAULT_ACCESSIBILITY_SETTINGS, enabled: true, soundRequired: false };
+  const out = { ...base };
+
+  const has = (need: SupportNeed) => clean.includes(need);
+
+  if (has("vision")) {
+    out.largeText = true;
+    out.largeButtons = true;
+    out.highContrast = true;
+    out.simplifiedVisuals = true;
+    out.voiceInstructions = true;
+    out.voiceNavigation = true;
+    out.botaVoiceGuide = true;
+    out.textHints = true;
+    out.visualFeedback = true;
+    out.soundRequired = false;
+  }
+
+  if (has("hearing")) {
+    out.textHints = true;
+    out.subtitles = true;
+    out.visualFeedback = true;
+    out.soundRequired = false;
+  }
+
+  if (has("motor")) {
+    out.largeButtons = true;
+    out.extraLargeTouchTargets = true;
+    out.noDragRequired = true;
+    out.gestureAnswerMode = true;
+    out.confirmBeforeActions = true;
+    out.noTimer = true;
+  }
+
+  if (has("focus")) {
+    out.reducedAnimations = true;
+    out.simplifiedInstructions = true;
+    out.oneTaskAtATime = true;
+    out.fewerAnswerOptions = true;
+    out.noTimer = true;
+    out.simplifiedVisuals = true;
+    out.textHints = true;
+  }
+
+  return out;
+}
+
 function capSkillValue(value: number) {
   return Math.min(100, Math.max(0, value));
 }

@@ -7,6 +7,7 @@ import {
   applyGameAward,
   applyQrItemScan,
   applyQrUnlock,
+  buildAccessibilitySettings,
   makeMathQuestions,
   makeProfile,
   mergeSkillProgress,
@@ -14,6 +15,22 @@ import {
 } from "./gameLogic";
 
 describe("game reward rules", () => {
+  it("builds accessibility settings from support needs", () => {
+    const standard = buildAccessibilitySettings(["standard"]);
+    expect(standard.enabled).toBe(false);
+    expect(standard.textHints).toBe(true);
+    expect(standard.subtitles).toBe(true);
+    expect(standard.visualFeedback).toBe(true);
+
+    const combined = buildAccessibilitySettings(["vision", "focus"]);
+    expect(combined.enabled).toBe(true);
+    expect(combined.largeText).toBe(true);
+    expect(combined.highContrast).toBe(true);
+    expect(combined.noTimer).toBe(true);
+    expect(combined.reducedAnimations).toBe(true);
+    expect(combined.soundRequired).toBe(false);
+  });
+
   it("awards completion and bonus coins once per game", () => {
     const first = applyGameAward(makeProfile("Amina", 8, "kz"), "memory", "Memory Master", 20, 10, "sticker-almaty-mountains");
     const second = applyGameAward(first.profile, "memory", "Memory Master", 20, 10);
