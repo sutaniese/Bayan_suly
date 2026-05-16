@@ -55,12 +55,12 @@ type Reward = {
 const STORAGE_KEY = "botaQuest:v1";
 
 const locations: Location[] = [
-  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 61, y: 79 },
-  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 42, y: 75 },
-  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", x: 54, y: 37 },
-  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", x: 57, y: 53 },
-  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 38, y: 83 },
-  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 79, y: 58, locked: true },
+  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 69, y: 78 },
+  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 47, y: 78 },
+  { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", x: 58, y: 35 },
+  { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", x: 59, y: 50 },
+  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 43, y: 84 },
+  { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 80, y: 56, locked: true },
 ];
 
 const rewards: Reward[] = [
@@ -247,47 +247,70 @@ function Onboarding({ onStart }: { onStart: (profile: UserProfile) => void }) {
 
 function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View) => void }) {
   const completedCount = locations.filter((location) => location.gameId && profile.completedGames.includes(location.gameId)).length;
+  const nextQuest = locations.find((location) => location.gameId && !profile.completedGames.includes(location.gameId));
   return (
-    <section className="screen">
-      <p className="eyebrow">Kazakhstan map</p>
-      <h2>Choose a quest, {profile.name}</h2>
-      <div className="guide-card">
-        <div className="guide-avatar">🐫</div>
-        <p>Bota is ready. Complete learning quests across Kazakhstan, then scan a package to unlock the secret stop.</p>
-        <strong>{completedCount}/{CORE_LOCATION_IDS.length} quests complete</strong>
-      </div>
-      <div className="kazakhstan-map" aria-label="Interactive Kazakhstan quest map">
-        <div className="map-shape" aria-hidden="true">
-          <span className="map-region west">Caspian</span>
-          <span className="map-region north">Steppe</span>
-          <span className="map-region east">Altai</span>
-          <span className="map-region south">Silk Road</span>
+    <section className="screen map-screen">
+      <div className="map-hero">
+        <div>
+          <p className="eyebrow">Kazakhstan quest map</p>
+          <h2>Choose a city quest, {profile.name}</h2>
+          <p className="lead">Cities are playable learning stops. Finish quests, earn Bota Coins, then unlock the secret package route.</p>
         </div>
-        {locations.map((location) => {
-          const unlocked = profile.unlockedLocations.includes(location.id);
-          const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
-          return (
-            <button
-              key={location.id}
-              className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
-              disabled={!unlocked}
-              style={{ left: `${location.x}%`, top: `${location.y}%` }}
-              onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}
-              aria-label={`${location.city}: ${location.title}`}
-            >
-              <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
-              <span className="pin-label">
-                <strong>{location.city}</strong>
-                <small>{location.title}</small>
-                <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
-              </span>
-            </button>
-          );
-        })}
+        <div className="progress-card">
+          <span>{completedCount}/{CORE_LOCATION_IDS.length}</span>
+          <strong>quests complete</strong>
+        </div>
       </div>
-      <div className="cta-row">
-        <button onClick={() => onGo("qr")}>Scan Bota Package</button>
-        <button onClick={() => onGo("rewards")}>Rewards Shop</button>
+      <div className="desktop-map-layout">
+        <div className="kazakhstan-map" aria-label="Interactive Kazakhstan quest map">
+          <img className="real-map" src="/assets/kazakhstan-map.svg" alt="Map of Kazakhstan" />
+          {locations.map((location) => {
+            const unlocked = profile.unlockedLocations.includes(location.id);
+            const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
+            return (
+              <button
+                key={location.id}
+                className={`map-pin location-${location.id} ${unlocked ? "" : "locked"} ${completed ? "completed" : ""}`}
+                disabled={!unlocked}
+                style={{ left: `${location.x}%`, top: `${location.y}%` }}
+                onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}
+                aria-label={`${location.city}: ${location.title}`}
+              >
+                <span className="pin-icon">{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
+                <span className="pin-label">
+                  <strong>{location.city}</strong>
+                  <small>{location.title}</small>
+                  <em>{completed ? "Completed" : unlocked ? location.skill : "Scan package"}</em>
+                </span>
+              </button>
+            );
+          })}
+          <p className="map-credit">Map: Wikimedia Commons, Incall, CC BY-SA 4.0</p>
+        </div>
+        <aside className="quest-panel">
+          <div className="guide-card">
+            <div className="guide-avatar">🐫</div>
+            <p>Bota is ready. Pick a city pin on the map to start a quest.</p>
+            <strong>{nextQuest ? `Next: ${nextQuest.city}` : "All city quests complete"}</strong>
+          </div>
+          <div className="quest-list">
+            {locations.map((location) => {
+              const unlocked = profile.unlockedLocations.includes(location.id);
+              const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
+              return (
+                <button key={location.id} className={`quest-row ${completed ? "completed" : ""}`} disabled={!unlocked} onClick={() => location.gameId ? onGo(location.gameId) : onGo("secret")}>
+                  <span>{completed ? "✓" : unlocked ? location.icon : "🔒"}</span>
+                  <strong>{location.city}</strong>
+                  <small>{location.title}</small>
+                </button>
+              );
+            })}
+          </div>
+          <div className="cta-row">
+            <button onClick={() => onGo("qr")}>Scan Bota Package</button>
+            <button onClick={() => onGo("rewards")}>Rewards Shop</button>
+          </div>
+        </aside>
       </div>
     </section>
   );
