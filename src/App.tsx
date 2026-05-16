@@ -18,6 +18,7 @@ import {
   SKILL_GARDEN,
   getGrowthStage,
   sessionHasLearningActivity,
+  skillPracticeSummaryForGame,
   totalSkillProgress,
 } from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, UserProfile } from "./gameLogic";
@@ -51,7 +52,11 @@ type GameResult = {
   badge?: string;
   completedAt: string;
   alreadyAwarded: boolean;
+  stickersUnlocked: string[];
+  skillPracticeSummary: string;
 };
+
+type GameResultInput = Omit<GameResult, "coinsEarned" | "completedAt" | "alreadyAwarded" | "stickersUnlocked" | "skillPracticeSummary">;
 
 type Location = {
   id: string;
@@ -171,7 +176,7 @@ function App() {
   }, [profile]);
 
   const awardGame = (
-    game: Omit<GameResult, "coinsEarned" | "completedAt" | "alreadyAwarded">,
+    game: GameResultInput,
     baseCoins = 20,
     bonus = 10,
     stickerId?: string,
@@ -182,11 +187,15 @@ function App() {
       ...award.profile,
       unlockedStickers: Array.from(new Set([...award.profile.unlockedStickers, "sticker-bota"])),
     };
+    const prevStickers = new Set(profile.unlockedStickers);
+    const stickersUnlocked = nextProfile.unlockedStickers.filter((id) => !prevStickers.has(id));
     const nextResult = {
       ...game,
       coinsEarned: award.coinsEarned,
       completedAt: new Date().toISOString(),
       alreadyAwarded: award.alreadyAwarded,
+      stickersUnlocked,
+      skillPracticeSummary: skillPracticeSummaryForGame(game.gameId),
     };
     setProfile(nextProfile);
     setResult(nextResult);
@@ -222,46 +231,59 @@ function App() {
     }
   };
 
+  const showChildHub =
+    Boolean(profile) &&
+    (view === "map" ||
+      view === "album" ||
+      view === "garden" ||
+      view === "rewards" ||
+      view === "qr" ||
+      view === "daily-chest");
+
   return (
     <main className={className}>
-      <div className="phone">
-        {profile && view !== "onboarding" && (
-          <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} />
-        )}
-        {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
-        {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
-        {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
-        {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
-        {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
-        {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
-        {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-        {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
-        {profile && view === "result" && result && (
-          <ResultScreen
-            result={result}
-            onMap={() => setView("map")}
-            onRewards={() => setView("rewards")}
-            onAlbum={() => setView("album")}
-            onGarden={() => setView("garden")}
-          />
-        )}
-        {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
-        {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
-        {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
-        {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
-        {profile && view === "parent" && (
-          <ParentDashboard
-            profile={profile}
-            onAlbum={() => setView("album")}
-            onGarden={() => setView("garden")}
-            onSettings={() => setView("accessibility")}
-            onQr={() => setView("qr")}
-            onReset={resetProgress}
-          />
-        )}
-        {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
-        {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} />}
-        {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
+      <div className={`phone ${showChildHub ? "phone--with-hub" : ""}`}>
+        <div className="phone-body">
+          {profile && view !== "onboarding" && (
+            <TopBar profile={profile} onMap={() => setView("map")} onRewards={() => setView("rewards")} onParent={() => setView("parent-pin")} />
+          )}
+          {view === "onboarding" && <Onboarding onStart={(next) => { setProfile(next); setView("map"); }} />}
+          {profile && view === "map" && <MapScreen profile={profile} onGo={setView} />}
+          {profile && view === "garden" && <SkillGarden profile={profile} onBack={() => setView("map")} />}
+          {profile && view === "memory" && <MemoryGame accessibility={profile.accessibility} onDone={() => awardGame({ gameId: "memory", title: "Collect the Sweets", score: 100, skill: "memory", badge: "Memory Master" }, 20, 10, "sticker-almaty-mountains")} onSpeak={speak} />}
+          {profile && view === "words" && <WordsGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "words", title: "Find the Kazakh Word", score, skill: "language", badge: "Kazakh Word Explorer" }, 20, score === 100 ? 10 : 0, "sticker-turkestan")} onSpeak={speak} />}
+          {profile && view === "math" && <MathGame age={profile.age} accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "math", title: "Counting with Bota", score, skill: "math", badge: "Young Mathematician" }, 20, score >= 80 ? 10 : 0, "sticker-baiterek")} onSpeak={speak} />}
+          {profile && view === "patterns" && <PatternGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "patterns", title: "Pattern Caravan", score, skill: "logic", badge: "Pattern Pathfinder" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+          {profile && view === "culture" && <CultureGame accessibility={profile.accessibility} onDone={(score) => awardGame({ gameId: "culture", title: "Culture Match", score, skill: "culture", badge: "Culture Explorer" }, 20, score === 100 ? 10 : 0)} onSpeak={speak} />}
+          {profile && view === "result" && result && (
+            <ResultScreen
+              result={result}
+              accessibility={profile.accessibility}
+              onMap={() => setView("map")}
+              onRewards={() => setView("rewards")}
+              onAlbum={() => setView("album")}
+              onGarden={() => setView("garden")}
+            />
+          )}
+          {profile && view === "rewards" && <RewardsShop profile={profile} onMap={() => setView("map")} onAlbum={() => setView("album")} onParent={() => setView("parent-pin")} />}
+          {profile && view === "daily-chest" && <DailyChest profile={profile} onOpen={openDailyChest} onBack={() => setView("map")} onSpeak={speak} />}
+          {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
+          {profile && view === "parent-pin" && <ParentPin onSuccess={() => setView("parent")} />}
+          {profile && view === "parent" && (
+            <ParentDashboard
+              profile={profile}
+              onAlbum={() => setView("album")}
+              onGarden={() => setView("garden")}
+              onSettings={() => setView("accessibility")}
+              onQr={() => setView("qr")}
+              onReset={resetProgress}
+            />
+          )}
+          {profile && view === "accessibility" && <AccessibilityPanel profile={profile} onChange={setProfile} onBack={() => setView("parent")} />}
+          {profile && view === "qr" && <QrCollection profile={profile} items={QR_ITEMS} message={qrMessage} onScan={scanQrItem} onSecret={() => setView("secret")} />}
+          {profile && view === "secret" && <SecretLocation onMap={() => setView("map")} />}
+        </div>
+        {showChildHub && <ChildHubNav active={view as HubTabView} onGo={setView} onParent={() => setView("parent-pin")} />}
       </div>
     </main>
   );
@@ -280,6 +302,41 @@ function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile;
         <button className="icon-button" onClick={onParent} aria-label="Parent mode">🔒</button>
       </div>
     </header>
+  );
+}
+
+type HubTabView = "map" | "album" | "garden" | "rewards" | "qr" | "daily-chest";
+
+function ChildHubNav({ active, onGo, onParent }: { active: HubTabView; onGo: (view: View) => void; onParent: () => void }) {
+  const tabs: { view: HubTabView; icon: string; label: string }[] = [
+    { view: "map", icon: "🗺️", label: "Map" },
+    { view: "album", icon: "📔", label: "Album" },
+    { view: "garden", icon: "🌱", label: "Garden" },
+    { view: "rewards", icon: "🎁", label: "Rewards" },
+    { view: "qr", icon: "📦", label: "QR" },
+    { view: "daily-chest", icon: "🧰", label: "Chest" },
+  ];
+  return (
+    <nav className="child-hub-nav" aria-label="Quick navigation">
+      <div className="child-hub-nav-scroll">
+        {tabs.map((tab) => (
+          <button
+            key={tab.view}
+            type="button"
+            className={`hub-nav-item ${active === tab.view ? "is-active" : ""}`}
+            aria-current={active === tab.view ? "page" : undefined}
+            onClick={() => onGo(tab.view)}
+          >
+            <span className="hub-nav-icon" aria-hidden>{tab.icon}</span>
+            <span className="hub-nav-label">{tab.label}</span>
+          </button>
+        ))}
+        <button type="button" className="hub-nav-item hub-nav-item--parent" onClick={onParent} aria-label="Parent mode (PIN required)">
+          <span className="hub-nav-icon" aria-hidden>🔒</span>
+          <span className="hub-nav-label">Parent</span>
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -754,21 +811,27 @@ function GameShell({ title, hint, accessibility, onSpeak, children }: { title: s
 
 function ResultScreen({
   result,
+  accessibility,
   onMap,
   onRewards,
   onAlbum,
   onGarden,
 }: {
   result: GameResult;
+  accessibility: AccessibilitySettings;
   onMap: () => void;
   onRewards: () => void;
   onAlbum: () => void;
   onGarden: () => void;
 }) {
   const great = result.score >= 80;
+  const stickerDetails = result.stickersUnlocked
+    .map((id) => STICKERS.find((s) => s.id === id))
+    .filter((s): s is (typeof STICKERS)[number] => Boolean(s));
+  const showLearningFocus = !result.alreadyAwarded && Boolean(result.skillPracticeSummary);
   return (
-    <section className="screen center">
-      <div className="celebration">
+    <section className="screen center result-screen">
+      <div className={`celebration ${accessibility.reducedAnimations ? "celebration--static" : ""}`}>
         <span>⭐</span><span>🌟</span><span>✨</span><span>🌟</span><span>⭐</span>
       </div>
       <p className="eyebrow">Quest complete!</p>
@@ -782,7 +845,25 @@ function ResultScreen({
         }</p>
       </div>
       {!result.alreadyAwarded && result.coinsEarned > 0 && (
-        <div className="coin-earned">🪙 +{result.coinsEarned}</div>
+        <div className={`coin-earned ${accessibility.reducedAnimations ? "coin-earned--static" : ""}`}>🪙 +{result.coinsEarned}</div>
+      )}
+      {showLearningFocus && (
+        <p className="result-learning-focus">
+          <strong>Learning focus:</strong> {result.skillPracticeSummary}
+        </p>
+      )}
+      {!result.alreadyAwarded && stickerDetails.length > 0 && (
+        <div className="result-stickers">
+          <strong>New in your album</strong>
+          <ul>
+            {stickerDetails.map((sticker) => (
+              <li key={sticker.id}>
+                <span className="result-sticker-emoji">{sticker.imageEmoji}</span>
+                <span>{sticker.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {result.badge && <p className="badge">🏅 Badge: {result.badge}</p>}
       <div className="cta-row">

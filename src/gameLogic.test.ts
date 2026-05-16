@@ -10,6 +10,7 @@ import {
   makeMathQuestions,
   makeProfile,
   mergeSkillProgress,
+  skillPracticeSummaryForGame,
 } from "./gameLogic";
 
 describe("game reward rules", () => {
@@ -91,6 +92,11 @@ describe("game reward rules", () => {
     const session = p.sessionHistory.find((s) => s.date === day);
     expect(session?.gamesCompleted).toEqual(expect.arrayContaining(["memory", "math"]));
     expect(session?.coinsEarned).toBe(40);
+  });
+
+  it("describes skill practice per game for summaries", () => {
+    expect(skillPracticeSummaryForGame("words")).toContain("Kazakh");
+    expect(skillPracticeSummaryForGame("math")).toContain("math");
   });
 
   it("uses age-based math difficulty", () => {

@@ -248,6 +248,13 @@ function skillsForGame(gameId: string): LearningSession["skillsTrained"] {
   return [];
 }
 
+/** Short phrase for quest result / parent-facing copy */
+export function skillPracticeSummaryForGame(gameId: string): string {
+  const skills = skillsForGame(gameId);
+  if (!skills.length) return "General learning";
+  return skills.map((s) => SESSION_SKILL_LABELS[s]).join(" · ");
+}
+
 function uniqMergeStrings(a: string[], b?: string[]): string[] {
   if (!b?.length) return a;
   const seen = new Set(a);

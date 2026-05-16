@@ -122,6 +122,18 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   box-shadow: 0 24px 80px rgba(0,0,0,0.12);
 }
 
+.phone--with-hub {
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .screen {
   min-height: calc(100vh - 7.25rem);
   padding: clamp(1.25rem, 3vw, 2.25rem);
@@ -717,6 +729,59 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .celebration span:nth-child(4) { animation-delay: 0.6s; }
 .celebration span:nth-child(5) { animation-delay: 0.8s; }
 
+.celebration--static span {
+  animation: none !important;
+}
+
+.result-screen .result-learning-focus {
+  margin: 0;
+  max-width: 26rem;
+  line-height: 1.45;
+  font-size: 0.95rem;
+  text-align: center;
+  color: var(--text-main);
+}
+
+.result-stickers {
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px solid rgba(102, 187, 106, 0.25);
+}
+
+.result-stickers strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.result-stickers ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.result-stickers li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.result-sticker-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.coin-earned--static {
+  animation: none !important;
+}
+
 .coin-earned {
   display: inline-flex;
   align-items: center;
@@ -925,6 +990,76 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
   box-shadow: 0 4px 0 rgba(0,0,0,0.12);
 }
 .reset-actions { display: flex; gap: 0.55rem; }
+
+.child-hub-nav {
+  flex: 0 0 auto;
+  border-top: 2px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 249, 236, 0.96);
+  backdrop-filter: blur(12px);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.child-hub-nav-scroll {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.4rem 0.35rem 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.child-hub-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.hub-nav-item {
+  flex: 1 0 56px;
+  min-width: 56px;
+  max-width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.2rem;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.hub-nav-item:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.hub-nav-item.is-active {
+  background: #fff;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
+  font-weight: 800;
+}
+
+.hub-nav-item--parent .hub-nav-label {
+  font-size: 0.62rem;
+}
+
+.hub-nav-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.hub-nav-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.large-buttons .hub-nav-item {
+  min-height: 56px;
+}
 
 .parent-summary-card {
   margin-bottom: 1rem;
@@ -1212,12 +1347,22 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .qr-card, .high-contrast .qr-note,
 .high-contrast .skill-plant-card, .high-contrast .skill-garden-total,
 .high-contrast .garden-unlocked-banner,
-.high-contrast .parent-summary-card {
+.high-contrast .parent-summary-card,
+.high-contrast .result-stickers {
   background: #111; color: #fff; border-color: #fff;
 }
 .high-contrast .parent-summary-meta li { background: #1a1a1a; color: #fff; }
 .high-contrast .parent-summary-meta span,
 .high-contrast .parent-summary-empty { color: var(--accent-yellow); }
+.high-contrast .child-hub-nav {
+  background: #0a0a0a;
+  border-top-color: #fff;
+}
+.high-contrast .hub-nav-item { color: #fff; }
+.high-contrast .hub-nav-item.is-active {
+  background: #222;
+  color: #fff;
+}
 .high-contrast .skill-bar { background: #333; }
 .high-contrast .skill-bar > span { background: #fff; }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,
