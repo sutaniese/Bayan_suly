@@ -386,7 +386,11 @@ function BotaVoiceGuide({
   const settings = profile.adaptiveProfile.settings;
   const enabled = settings.botaVoiceGuide || settings.voiceInstructions;
   const hidden =
-    view === "onboarding" || view === "parent-pin" || view === "parent" || view === "accessibility";
+    view === "onboarding" ||
+    view === "adaptive-profile-result" ||
+    view === "parent-pin" ||
+    view === "parent" ||
+    view === "accessibility";
   if (!enabled || hidden) return null;
 
   const confirmIfVoice = (phrase: string) => {
