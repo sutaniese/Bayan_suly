@@ -7,8 +7,10 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button, input, select { font: inherit; }
-button { min-height: 48px; border: 0; border-radius: 8px; padding: 0.75rem 1rem; background: #ffffff; color: #24311f; font-weight: 800; box-shadow: 0 2px 0 rgba(36, 49, 31, 0.14); }
+button { min-height: 48px; border: 0; border-radius: 8px; padding: 0.75rem 1rem; background: #ffffff; color: #24311f; font-weight: 800; box-shadow: 0 2px 0 rgba(36, 49, 31, 0.14); cursor: pointer; }
 button:disabled { opacity: 0.5; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 4px solid #1b7fbd; outline-offset: 3px; }
+button:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(36, 49, 31, 0.18); }
 input, select { width: 100%; min-height: 48px; border: 2px solid #dfc790; border-radius: 8px; padding: 0.7rem 0.85rem; background: #fffaf0; color: #24311f; }
 fieldset { border: 0; margin: 0; padding: 0; }
 label, legend { display: grid; gap: 0.35rem; font-weight: 800; }
@@ -51,6 +53,7 @@ h3 { font-size: 1.35rem; }
 .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
 .memory-card { aspect-ratio: 1; min-height: 76px; font-size: 2.1rem; background: #ffe28a; }
+.memory-card:disabled { opacity: 1; background: #fff7d2; }
 .status, .hint, .feedback, .badge { border-radius: 8px; padding: 0.75rem; background: #ecf7e3; color: #24311f; font-weight: 800; }
 .feedback { background: #fff0ce; }
 .big-icon { font-size: 5rem; text-align: center; }
@@ -81,6 +84,7 @@ h3 { font-size: 1.35rem; }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small, .high-contrast em { color: #ffe28a; }
 .high-contrast button { background: #ffe28a; color: #000; }
 .high-contrast .primary { background: #fff; color: #000; }
+.high-contrast button:focus-visible, .high-contrast input:focus-visible, .high-contrast select:focus-visible { outline-color: #fff; }
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 
 @media (max-width: 420px) {
@@ -91,4 +95,8 @@ h3 { font-size: 1.35rem; }
   h2 { font-size: 1.65rem; }
   .cta-row { grid-template-columns: 1fr; }
   .memory-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
