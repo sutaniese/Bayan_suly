@@ -210,7 +210,7 @@ function TopBar({ profile, onMap, onRewards, onParent }: { profile: UserProfile;
       <button className="icon-button" onClick={onMap} aria-label="Map">🗺️</button>
       <div className="brand-lockup">
         <strong>Bota Quest</strong>
-        <span>{profile.coins} Bota Coins</span>
+        <span>UI v2 • {profile.coins} Bota Coins</span>
       </div>
       <div className="top-actions">
         <button className="icon-button" onClick={onRewards} aria-label="Rewards">🎁</button>
