@@ -7,16 +7,20 @@ import {
   applyDailyChest,
   applyGameAward,
   applyQrItemScan,
+  getSessionForDate,
   getUserProfile,
   makeMathQuestions,
   makeProfile,
   saveUserProfile,
   QR_ITEMS,
+  SESSION_ACTIVITY_LABELS,
+  SESSION_SKILL_LABELS,
   SKILL_GARDEN,
   getGrowthStage,
+  sessionHasLearningActivity,
   totalSkillProgress,
 } from "./gameLogic";
-import type { AccessibilitySettings, Age, Language, QrItem, UserProfile } from "./gameLogic";
+import type { AccessibilitySettings, Age, Language, LearningSession, QrItem, UserProfile } from "./gameLogic";
 
 type View =
   | "onboarding"
@@ -889,6 +893,103 @@ function ParentPin({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function joinWithAnd(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function buildParentSummaryParagraph(profile: UserProfile, session: LearningSession): string {
+  const name = profile.name;
+  const gameLabels = session.gamesCompleted.map((g) => SESSION_ACTIVITY_LABELS[g] ?? g.replace(/-/g, " "));
+  const qrBits = session.qrItemsScanned.map((id) => {
+    if (id === "package-qr") return "a Bota package unlock (demo)";
+    const item = QR_ITEMS.find((q) => q.id === id);
+    return item ? `scanning ${item.productName}` : "a package activity";
+  });
+  const activities = [...gameLabels, ...qrBits];
+  const n = activities.length;
+  const activityText =
+    n === 0
+      ? "used the app for learning"
+      : `completed ${n} educational activit${n === 1 ? "y" : "ies"}: ${joinWithAnd(activities)}`;
+  const stickers = session.stickersEarned
+    .map((id) => STICKERS.find((s) => s.id === id)?.title ?? id)
+    .filter(Boolean);
+  const stickerPhrase =
+    stickers.length === 0
+      ? "did not add new album stickers in this summary window"
+      : stickers.length === 1
+        ? `collected a new sticker (${stickers[0]})`
+        : `collected ${stickers.length} new stickers (${joinWithAnd(stickers)})`;
+  const skills = session.skillsTrained.map((s) => SESSION_SKILL_LABELS[s]);
+  const skillPhrase =
+    skills.length === 0 ? "has not logged skill practice yet today" : `trained learning progress in ${joinWithAnd(skills)}`;
+  return `Today, ${name} ${activityText}. ${name} earned ${session.coinsEarned} Bota Coins, ${stickerPhrase}, and ${skillPhrase}.`;
+}
+
+function ParentSummaryCard({
+  profile,
+  calendarDay,
+  onGarden,
+  onAlbum,
+}: {
+  profile: UserProfile;
+  calendarDay: string;
+  onGarden: () => void;
+  onAlbum: () => void;
+}) {
+  const session = getSessionForDate(profile, calendarDay);
+  const hasData = session && sessionHasLearningActivity(session);
+
+  return (
+    <div className="parent-summary-card">
+      <p className="eyebrow">Today's learning summary</p>
+      <h3>Learning at a glance</h3>
+      {hasData && session ? (
+        <>
+          <p className="parent-summary-lead">{buildParentSummaryParagraph(profile, session)}</p>
+          <ul className="parent-summary-meta">
+            <li>
+              <strong>Educational activities today</strong>
+              <span>{session.gamesCompleted.length + session.qrItemsScanned.length}</span>
+            </li>
+            <li>
+              <strong>Bota Coins earned today</strong>
+              <span>{session.coinsEarned}</span>
+            </li>
+            <li>
+              <strong>New stickers today</strong>
+              <span>{session.stickersEarned.length}</span>
+            </li>
+            <li>
+              <strong>Skills trained today</strong>
+              <span>{session.skillsTrained.length ? session.skillsTrained.map((s) => SESSION_SKILL_LABELS[s]).join(" · ") : "—"}</span>
+            </li>
+            <li>
+              <strong>Screen time</strong>
+              <span>Guided limit in this demo: 30 minutes per day. Learning stays short and focused.</span>
+            </li>
+          </ul>
+        </>
+      ) : (
+        <p className="parent-summary-empty">
+          Today's learning journey has not started yet. Complete a mini-game with Bota to see progress here.
+        </p>
+      )}
+      <div className="parent-summary-cta">
+        <button className="primary" type="button" onClick={onGarden}>
+          Open Skill Garden 🌱
+        </button>
+        <button type="button" onClick={onAlbum}>
+          Open Sticker Album 📔
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ParentDashboard({
   profile,
   onAlbum,
@@ -911,6 +1012,7 @@ function ParentDashboard({
     <section className="screen">
       <p className="eyebrow">Parent dashboard</p>
       <h2>📊 {profile.name}'s Progress</h2>
+      <ParentSummaryCard profile={profile} calendarDay={getToday()} onGarden={onGarden} onAlbum={onAlbum} />
       <div className="stats">
         <span>Age <b>{profile.age}</b></span>
         <span>Language <b>{profile.language.toUpperCase()}</b></span>

@@ -223,6 +223,111 @@ function skillDeltasForGame(gameId: string): Partial<SkillProgress> | null {
   return null;
 }
 
+/** Parent-facing labels for activities logged on today's learning session */
+export const SESSION_ACTIVITY_LABELS: Record<string, string> = {
+  memory: "memory matching",
+  math: "counting and math",
+  words: "Kazakh language practice",
+  patterns: "patterns and logic",
+  culture: "Kazakhstan culture",
+  "daily-chest": "the daily learning chest",
+};
+
+export const SESSION_SKILL_LABELS: Record<LearningSession["skillsTrained"][number], string> = {
+  memory: "memory",
+  math: "math",
+  language: "Kazakh language",
+  culture: "culture and facts",
+};
+
+function skillsForGame(gameId: string): LearningSession["skillsTrained"] {
+  if (gameId === "memory" || gameId === "patterns") return ["memory"];
+  if (gameId === "math") return ["math"];
+  if (gameId === "words") return ["language", "culture"];
+  if (gameId === "culture") return ["culture"];
+  return [];
+}
+
+function uniqMergeStrings(a: string[], b?: string[]): string[] {
+  if (!b?.length) return a;
+  const seen = new Set(a);
+  const out = [...a];
+  for (const x of b) {
+    if (!seen.has(x)) {
+      seen.add(x);
+      out.push(x);
+    }
+  }
+  return out;
+}
+
+function uniqMergeSkills(
+  a: LearningSession["skillsTrained"],
+  b?: LearningSession["skillsTrained"],
+): LearningSession["skillsTrained"] {
+  if (!b?.length) return a;
+  const seen = new Set<string>(a);
+  const out = [...a] as LearningSession["skillsTrained"];
+  for (const x of b) {
+    if (!seen.has(x)) {
+      seen.add(x);
+      out.push(x);
+    }
+  }
+  return out;
+}
+
+/** Append activity to the session for `date` (YYYY-MM-DD), creating the row if needed. */
+export function appendSessionDelta(
+  profile: UserProfile,
+  date: string,
+  delta: {
+    gamesCompleted?: string[];
+    coinsEarned?: number;
+    skillsTrained?: LearningSession["skillsTrained"];
+    stickersEarned?: string[];
+    qrItemsScanned?: string[];
+  },
+): UserProfile {
+  const sessions = [...profile.sessionHistory];
+  let idx = sessions.findIndex((s) => s.date === date);
+  if (idx === -1) {
+    sessions.push({
+      id: `session-${date}-${Math.random().toString(36).slice(2, 9)}`,
+      date,
+      gamesCompleted: [],
+      coinsEarned: 0,
+      skillsTrained: [],
+      stickersEarned: [],
+      qrItemsScanned: [],
+    });
+    idx = sessions.length - 1;
+  }
+  const cur = sessions[idx];
+  sessions[idx] = {
+    ...cur,
+    gamesCompleted: uniqMergeStrings(cur.gamesCompleted, delta.gamesCompleted),
+    coinsEarned: cur.coinsEarned + (delta.coinsEarned ?? 0),
+    skillsTrained: uniqMergeSkills(cur.skillsTrained, delta.skillsTrained),
+    stickersEarned: uniqMergeStrings(cur.stickersEarned, delta.stickersEarned),
+    qrItemsScanned: uniqMergeStrings(cur.qrItemsScanned, delta.qrItemsScanned),
+  };
+  return { ...profile, sessionHistory: sessions };
+}
+
+export function getSessionForDate(profile: UserProfile, date: string): LearningSession | undefined {
+  return profile.sessionHistory.find((s) => s.date === date);
+}
+
+export function sessionHasLearningActivity(session: LearningSession): boolean {
+  return (
+    session.coinsEarned > 0 ||
+    session.gamesCompleted.length > 0 ||
+    session.stickersEarned.length > 0 ||
+    session.qrItemsScanned.length > 0
+  );
+}
+
 export function makeProfile(name: string, age: Age, language: Language): UserProfile {
   return {
     name,
@@ -318,8 +423,16 @@ export function applyDailyChest(profile: UserProfile, date: string, reward: Dail
     { culture: 5 },
   );
 
+  const newStickers = withSkills.unlockedStickers.filter((id) => !profile.unlockedStickers.includes(id));
+  const profileWithSession = appendSessionDelta(withSkills, date, {
+    gamesCompleted: ["daily-chest"],
+    coinsEarned: reward.coins,
+    skillsTrained: ["culture"],
+    stickersEarned: newStickers,
+  });
+
   return {
-    profile: withSkills,
+    profile: profileWithSession,
     alreadyOpened: false,
     coinsEarned: reward.coins,
     stickerUnlocked,
@@ -355,8 +468,17 @@ export function applyQrItemScan(profile: UserProfile, item: QrItem) {
     awardedEvents: Array.from(new Set([...profile.awardedEvents, `qr-item:${item.id}`])),
   };
 
+  const finalProfile = mergeSkillProgress(afterScan, { culture: 5 });
+  const day = new Date().toISOString().slice(0, 10);
+  const newStickers = finalProfile.unlockedStickers.filter((id) => !profile.unlockedStickers.includes(id));
+
   return {
-    profile: mergeSkillProgress(afterScan, { culture: 5 }),
+    profile: appendSessionDelta(finalProfile, day, {
+      qrItemsScanned: [item.id],
+      coinsEarned: item.rewardCoins,
+      skillsTrained: ["culture"],
+      stickersEarned: newStickers,
+    }),
     alreadyScanned: false,
     coinsEarned: item.rewardCoins,
     stickerUnlocked,
@@ -391,6 +513,16 @@ export function applyGameAward(
     const deltas = skillDeltasForGame(gameId);
     if (deltas) nextProfile = mergeSkillProgress(nextProfile, deltas);
   }
+  if (!alreadyAwarded && coinsEarned > 0) {
+    const day = new Date().toISOString().slice(0, 10);
+    const newStickers = nextProfile.unlockedStickers.filter((id) => !profile.unlockedStickers.includes(id));
+    nextProfile = appendSessionDelta(nextProfile, day, {
+      gamesCompleted: [gameId],
+      coinsEarned,
+      skillsTrained: skillsForGame(gameId),
+      stickersEarned: newStickers,
+    });
+  }
 
   return {
     profile: nextProfile,
@@ -409,7 +541,16 @@ export function applyQrUnlock(profile: UserProfile): UserProfile {
     unlockedStickers,
     awardedEvents: alreadyAwarded ? profile.awardedEvents : [...profile.awardedEvents, "qr:secret"],
   };
-  return alreadyAwarded ? base : mergeSkillProgress(base, { culture: 5 });
+  if (alreadyAwarded) return base;
+  const merged = mergeSkillProgress(base, { culture: 5 });
+  const day = new Date().toISOString().slice(0, 10);
+  const newStickers = merged.unlockedStickers.filter((id) => !profile.unlockedStickers.includes(id));
+  return appendSessionDelta(merged, day, {
+    coinsEarned: 15,
+    skillsTrained: ["culture"],
+    stickersEarned: newStickers,
+    qrItemsScanned: ["package-qr"],
+  });
 }
 
 export function makeMathQuestions(age: Age) {

@@ -926,6 +926,75 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 }
 .reset-actions { display: flex; gap: 0.55rem; }
 
+.parent-summary-card {
+  margin-bottom: 1rem;
+  padding: 1.15rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, #e8f5e9 0%, #fff8e1 100%);
+  border: 2px solid rgba(102, 187, 106, 0.35);
+  box-shadow: var(--shadow-soft);
+}
+
+.parent-summary-card h3 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.parent-summary-lead {
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  font-size: 0.98rem;
+  color: var(--text-main);
+}
+
+.parent-summary-meta {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.parent-summary-meta li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+}
+
+.parent-summary-meta strong {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.parent-summary-meta span {
+  text-align: right;
+  color: var(--text-muted);
+  max-width: 56%;
+}
+
+.parent-summary-empty {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.parent-summary-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.parent-summary-cta button {
+  flex: 1;
+  min-width: 140px;
+}
+
 .qr {
   width: 140px;
   height: 140px;
@@ -1142,9 +1211,13 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .sticker-card, .high-contrast .sticker-detail, .high-contrast .album-progress,
 .high-contrast .qr-card, .high-contrast .qr-note,
 .high-contrast .skill-plant-card, .high-contrast .skill-garden-total,
-.high-contrast .garden-unlocked-banner {
+.high-contrast .garden-unlocked-banner,
+.high-contrast .parent-summary-card {
   background: #111; color: #fff; border-color: #fff;
 }
+.high-contrast .parent-summary-meta li { background: #1a1a1a; color: #fff; }
+.high-contrast .parent-summary-meta span,
+.high-contrast .parent-summary-empty { color: var(--accent-yellow); }
 .high-contrast .skill-bar { background: #333; }
 .high-contrast .skill-bar > span { background: #fff; }
 .high-contrast .lead, .high-contrast .eyebrow, .high-contrast small,
