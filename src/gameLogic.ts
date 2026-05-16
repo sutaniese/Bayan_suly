@@ -11,6 +11,41 @@ export type AccessibilitySettings = {
   gestureAnswerMode: boolean;
 };
 
+export type SkillProgress = {
+  memory: number;
+  math: number;
+  language: number;
+  culture: number;
+};
+
+export type LearningSession = {
+  id: string;
+  date: string;
+  gamesCompleted: string[];
+  coinsEarned: number;
+  skillsTrained: Array<"memory" | "math" | "language" | "culture">;
+  stickersEarned: string[];
+  qrItemsScanned: string[];
+};
+
+export type Sticker = {
+  id: string;
+  title: string;
+  description: string;
+  category: "city" | "culture" | "nature" | "bota" | "product";
+  unlockType: "game" | "daily_chest" | "qr" | "skill";
+  imageEmoji: string;
+};
+
+export type QrItem = {
+  id: string;
+  title: string;
+  productName: string;
+  rewardStickerId: string;
+  rewardCoins: number;
+  unlockMessage: string;
+};
+
 export type UserProfile = {
   name: string;
   age: Age;
@@ -19,11 +54,17 @@ export type UserProfile = {
   completedGames: string[];
   unlockedLocations: string[];
   badges: string[];
+  unlockedStickers: string[];
+  openedDailyChestDates: string[];
+  scannedQrItems: string[];
+  skillProgress: SkillProgress;
+  sessionHistory: LearningSession[];
   accessibility: AccessibilitySettings;
   awardedEvents: string[];
 };
 
 export const CORE_LOCATION_IDS = ["almaty", "turkestan", "astana", "karaganda", "shymkent"];
+export const STORAGE_KEY = "botaQuest:v1";
 
 export const defaultAccessibility: AccessibilitySettings = {
   largeButtons: false,
@@ -35,6 +76,13 @@ export const defaultAccessibility: AccessibilitySettings = {
   gestureAnswerMode: false,
 };
 
+export const defaultSkillProgress: SkillProgress = {
+  memory: 0,
+  math: 0,
+  language: 0,
+  culture: 0,
+};
+
 export function makeProfile(name: string, age: Age, language: Language): UserProfile {
   return {
     name,
@@ -44,9 +92,51 @@ export function makeProfile(name: string, age: Age, language: Language): UserPro
     completedGames: [],
     unlockedLocations: CORE_LOCATION_IDS,
     badges: [],
+    unlockedStickers: [],
+    openedDailyChestDates: [],
+    scannedQrItems: [],
+    skillProgress: { ...defaultSkillProgress },
+    sessionHistory: [],
     accessibility: defaultAccessibility,
     awardedEvents: [],
   };
+}
+
+function hydrateProfile(raw: Partial<UserProfile>): UserProfile {
+  const base = makeProfile(raw.name ?? "", raw.age ?? 7, raw.language ?? "ru");
+  return {
+    ...base,
+    ...raw,
+    completedGames: raw.completedGames ?? [],
+    unlockedLocations: raw.unlockedLocations ?? base.unlockedLocations,
+    badges: raw.badges ?? [],
+    unlockedStickers: raw.unlockedStickers ?? [],
+    openedDailyChestDates: raw.openedDailyChestDates ?? [],
+    scannedQrItems: raw.scannedQrItems ?? [],
+    skillProgress: { ...defaultSkillProgress, ...(raw.skillProgress ?? {}) },
+    sessionHistory: raw.sessionHistory ?? [],
+    accessibility: { ...defaultAccessibility, ...(raw.accessibility ?? {}) },
+    awardedEvents: raw.awardedEvents ?? [],
+  };
+}
+
+export function getUserProfile(): UserProfile {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return makeProfile("", 7, "ru");
+    return hydrateProfile(JSON.parse(raw) as Partial<UserProfile>);
+  } catch {
+    return makeProfile("", 7, "ru");
+  }
+}
+
+export function saveUserProfile(profile: UserProfile) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+}
+
+export function updateUserProfile(updater: (profile: UserProfile) => UserProfile) {
+  const next = updater(getUserProfile());
+  saveUserProfile(next);
 }
 
 export function applyGameAward(profile: UserProfile, gameId: string, badge: string | undefined, baseCoins = 20, bonus = 10) {

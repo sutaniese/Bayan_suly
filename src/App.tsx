@@ -1,5 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CORE_LOCATION_IDS, applyGameAward, applyQrUnlock, defaultAccessibility, makeMathQuestions, makeProfile } from "./gameLogic";
+import {
+  CORE_LOCATION_IDS,
+  STORAGE_KEY,
+  applyGameAward,
+  applyQrUnlock,
+  getUserProfile,
+  makeMathQuestions,
+  makeProfile,
+  saveUserProfile,
+} from "./gameLogic";
 import type { AccessibilitySettings, Age, Language, UserProfile } from "./gameLogic";
 
 type View =
@@ -51,8 +60,6 @@ type Reward = {
   code?: string;
   discount?: string;
 };
-
-const STORAGE_KEY = "botaQuest:v1";
 
 const locations: Location[] = [
   { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 69, y: 78 },
@@ -119,7 +126,7 @@ const cultureQuestions = [
 function loadProfile(): UserProfile | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? ({ ...makeProfile("", 7, "ru"), ...JSON.parse(raw) } as UserProfile) : null;
+    return raw ? getUserProfile() : null;
   } catch {
     return null;
   }
@@ -131,7 +138,7 @@ function App() {
   const [result, setResult] = useState<GameResult | null>(null);
 
   useEffect(() => {
-    if (profile) localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    if (profile) saveUserProfile(profile);
   }, [profile]);
 
   const className = useMemo(() => {
