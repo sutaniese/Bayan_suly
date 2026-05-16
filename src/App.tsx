@@ -170,9 +170,12 @@ function App() {
     const a = profile?.adaptiveProfile.settings;
     return [
       "app",
-      a?.highContrast ? "high-contrast" : "",
-      a?.largeButtons ? "large-buttons" : "",
-      a?.reducedAnimations ? "reduced-motion" : "",
+      a?.largeText ? "access-large-text" : "",
+      a?.largeButtons ? "access-large-buttons large-buttons" : "",
+      a?.extraLargeTouchTargets ? "access-extra-large-touch" : "",
+      a?.highContrast ? "access-high-contrast high-contrast" : "",
+      a?.reducedAnimations ? "access-reduced-motion reduced-motion" : "",
+      a?.simplifiedVisuals ? "access-simplified-visuals" : "",
     ]
       .filter(Boolean)
       .join(" ");

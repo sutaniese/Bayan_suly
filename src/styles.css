@@ -111,6 +111,47 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
     var(--bg-warm);
 }
 
+/* Phase 5 — global UI adaptation (root .app + profile settings) */
+.app.access-large-text {
+  font-size: 1.12rem;
+}
+.app.access-large-text h1 { font-size: clamp(2.35rem, 6vw, 2.95rem); }
+.app.access-large-text h2 { font-size: clamp(1.35rem, 4vw, 1.85rem); }
+.app.access-large-text h3 { font-size: 1.12rem; }
+.app.access-large-text .lead { font-size: 1.05rem; }
+
+.app.access-simplified-visuals .phone {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.app.access-simplified-visuals .panel,
+.app.access-simplified-visuals .question-card,
+.app.access-simplified-visuals .guide-card,
+.app.access-simplified-visuals .bota-bubble,
+.app.access-simplified-visuals .reward-card,
+.app.access-simplified-visuals .qr-card,
+.app.access-simplified-visuals .skill-plant-card,
+.app.access-simplified-visuals .daily-chest-card {
+  box-shadow: var(--shadow-soft);
+}
+.app.access-simplified-visuals .mascot,
+.app.access-simplified-visuals .bota-bubble .bota-face,
+.app.access-simplified-visuals .guide-avatar,
+.app.access-simplified-visuals .daily-chest-icon {
+  animation: none;
+}
+
+.app.access-extra-large-touch button {
+  min-height: 72px;
+  padding: 1rem 1.35rem;
+}
+.app.access-extra-large-touch .answers button {
+  min-height: 80px;
+}
+.app.access-extra-large-touch .icon-button {
+  width: 52px;
+  min-height: 52px;
+}
+
 .phone {
   width: min(100%, 1280px);
   min-height: calc(100vh - 2.5rem);
@@ -1446,8 +1487,16 @@ h3 { font-size: 1.15rem; line-height: 1.2; font-weight: 800; }
 .high-contrast .skill-plant-card, .high-contrast .skill-garden-total,
 .high-contrast .garden-unlocked-banner,
 .high-contrast .parent-summary-card,
-.high-contrast .result-stickers {
+.high-contrast .result-stickers,
+.high-contrast .support-card,
+.high-contrast .adaptive-result-panel,
+.high-contrast .pill {
   background: #111; color: #fff; border-color: #fff;
+}
+.high-contrast .support-card p,
+.high-contrast .recommendation-list,
+.high-contrast .adaptive-result-needs {
+  color: #fff;
 }
 .high-contrast .parent-summary-meta li { background: #1a1a1a; color: #fff; }
 .high-contrast .parent-summary-meta span,
