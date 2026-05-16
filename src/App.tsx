@@ -111,11 +111,11 @@ type Reward = {
 };
 
 const locations: Location[] = [
-  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 69, y: 78 },
-  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 47, y: 78 },
+  { id: "almaty", city: "Almaty", title: "Collect the Sweets", gameId: "memory", skill: "Memory", icon: "⛰️", x: 75, y: 82 },
+  { id: "turkestan", city: "Turkestan", title: "Find the Kazakh Word", gameId: "words", skill: "Kazakh language", icon: "🕌", x: 53, y: 81 },
   { id: "astana", city: "Astana", title: "Counting with Bota", gameId: "math", skill: "Math", icon: "🏛️", x: 58, y: 35 },
   { id: "karaganda", city: "Karaganda", title: "Pattern Caravan", gameId: "patterns", skill: "Logic", icon: "🔷", x: 59, y: 50 },
-  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 43, y: 84 },
+  { id: "shymkent", city: "Shymkent", title: "Culture Match", gameId: "culture", skill: "Culture", icon: "🎒", x: 57, y: 88 },
   { id: "secret", city: "Secret Location", title: "Package Adventure", skill: "QR reward", icon: "✨", x: 80, y: 56, locked: true },
 ];
 
@@ -896,7 +896,7 @@ function MapScreen({ profile, onGo }: { profile: UserProfile; onGo: (view: View)
       <div className="desktop-map-layout">
         <div className="kazakhstan-map" aria-label="Interactive Kazakhstan quest map">
           <img className="real-map" src="/assets/kazakhstan-map.svg" alt="Map of Kazakhstan" />
-          <div className="map-overlay" aria-hidden="true">
+          <div className="map-overlay">
             {locations.map((location) => {
               const unlocked = profile.unlockedLocations.includes(location.id);
               const completed = location.gameId ? profile.completedGames.includes(location.gameId) : false;
