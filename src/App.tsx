@@ -24,8 +24,6 @@ import {
   memorySpeakCardOnReveal,
   saveUserProfile,
   QR_ITEMS,
-  SESSION_ACTIVITY_LABELS,
-  SESSION_SKILL_LABELS,
   SKILL_GARDEN,
   buildAccessibilitySettings,
   buildRecommendationSummary,
@@ -118,6 +116,12 @@ type Reward = {
 type LocalizedText = Record<Language, string>;
 
 const pickText = (text: LocalizedText, language: Language) => text[language] ?? text.en;
+
+const LANGUAGE_OPTIONS: Array<{ code: Language; flag: string; label: string }> = [
+  { code: "kz", flag: "🇰🇿", label: "Қазақша" },
+  { code: "ru", flag: "🇷🇺", label: "Русский" },
+  { code: "en", flag: "🇬🇧", label: "English" },
+];
 
 const locations: Location[] = [
   // City coordinates use real-world lat/lon (GeoNames/OSM-level precision) and are projected into the map.
@@ -773,7 +777,7 @@ function App() {
           {profile && view === "daily-tasks" && <DailyTasksScreen profile={profile} onBack={() => setView("daily-chest")} />}
           {profile && view === "album" && <StickerAlbum profile={profile} onBack={() => setView("map")} />}
           {profile && view === "parent-pin" && (
-            <ParentPin accessibility={profile.adaptiveProfile.settings} onSpeak={speak} onSuccess={() => setView("parent")} />
+            <ParentPin accessibility={profile.adaptiveProfile.settings} language={profile.language} onSpeak={speak} onSuccess={() => setView("parent")} />
           )}
           {profile && view === "parent" && (
             <ParentDashboard
@@ -1168,11 +1172,6 @@ function BotaVoiceGuide({
 
 function TopBar({ profile, onMap, onRewards, onParent, onLangChange }: { profile: UserProfile; onMap: () => void; onRewards: () => void; onParent: () => void; onLangChange: (l: Language) => void }) {
   const t = (k: string) => uiStr(k, profile.language);
-  const langs: { code: Language; flag: string }[] = [
-    { code: "kz", flag: "🇰🇿" },
-    { code: "ru", flag: "🇷🇺" },
-    { code: "en", flag: "🇬🇧" },
-  ];
   return (
     <header className="topbar">
       <button className="icon-button" onClick={onMap} aria-label={t("open_map")}>🗺️</button>
@@ -1182,12 +1181,12 @@ function TopBar({ profile, onMap, onRewards, onParent, onLangChange }: { profile
       </div>
       <div className="top-actions">
         <div className="lang-switch">
-          {langs.map((l) => (
+          {LANGUAGE_OPTIONS.map((l) => (
             <button
               key={l.code}
               className={`lang-btn ${profile.language === l.code ? "lang-btn--active" : ""}`}
               onClick={() => onLangChange(l.code)}
-              aria-label={l.code}
+              aria-label={l.label}
             >
               {l.flag}
             </button>
@@ -2634,12 +2633,243 @@ function RewardsShop({
   );
 }
 
+const PARENT_TEXT: Record<string, LocalizedText> = {
+  pin_lead: {
+    en: "This area is for grown-ups only.",
+    ru: "Этот раздел только для взрослых.",
+    kz: "Бұл бөлім тек ересектерге арналған.",
+  },
+  pin_error_headline: {
+    en: "That PIN did not match",
+    ru: "ПИН не совпал",
+    kz: "PIN сәйкес келмеді",
+  },
+  pin_error_detail: {
+    en: "Try 1234 for the MVP demo - no penalty, just try again.",
+    ru: "Для MVP-демо попробуйте 1234 - штрафа нет, просто попробуйте ещё раз.",
+    kz: "MVP демо үшін 1234 деп көріңіз - айып жоқ, қайта байқап көріңіз.",
+  },
+  unlock: { en: "Unlock", ru: "Открыть", kz: "Ашу" },
+  list_and: { en: "and", ru: "и", kz: "және" },
+  package_unlock: { en: "a Bota package unlock (demo)", ru: "разблокировку упаковки Bota (демо)", kz: "Bota қаптамасын ашуды (демо)" },
+  package_activity: { en: "a package activity", ru: "активность с упаковкой", kz: "қаптама белсенділігі" },
+  scanning_product: { en: "scanning {product}", ru: "сканирование {product}", kz: "{product} сканерлеу" },
+  activity_empty: { en: "used the app for learning", ru: "использовал(а) приложение для обучения", kz: "қолданбаны оқу үшін пайдаланды" },
+  activity_completed: { en: "completed {count} educational activities: {items}", ru: "выполнил(а) учебные активности ({count}): {items}", kz: "{count} оқу әрекетін орындады: {items}" },
+  stickers_none: { en: "did not add new album stickers in this summary window", ru: "не добавил(а) новых стикеров в альбом за этот период", kz: "осы кезеңде альбомға жаңа стикер қоспады" },
+  stickers_one: { en: "collected a new sticker ({stickers})", ru: "получил(а) новый стикер ({stickers})", kz: "жаңа стикер жинады ({stickers})" },
+  stickers_many: { en: "collected {count} new stickers ({stickers})", ru: "получил(а) новые стикеры ({count}): {stickers}", kz: "{count} жаңа стикер жинады: {stickers}" },
+  skills_none: { en: "has not logged skill practice yet today", ru: "сегодня ещё не тренировались навыки", kz: "бүгін дағды жаттығуы әлі тіркелмеді" },
+  skills_some: { en: "trained learning progress in {skills}", ru: "тренировал(а) навыки: {skills}", kz: "мына дағдыларды жаттықтырды: {skills}" },
+  summary_sentence: {
+    en: "Today, {name} {activityText}. {name} earned {coins} Bota Coins, {stickerPhrase}, and {skillPhrase}.",
+    ru: "Сегодня {name}: {activityText}. Монеты Бота: {coins}; {stickerPhrase}; {skillPhrase}.",
+    kz: "Бүгін {name}: {activityText}. {coins} Бота тиыны жиналды; {stickerPhrase}; {skillPhrase}.",
+  },
+  summary_eyebrow: { en: "Today's learning summary", ru: "Сводка обучения за сегодня", kz: "Бүгінгі оқу қорытындысы" },
+  summary_title: { en: "Learning at a glance", ru: "Обучение в двух словах", kz: "Оқуға қысқаша шолу" },
+  summary_empty: {
+    en: "Today's learning journey has not started yet. Complete a mini-game with Bota to see progress here.",
+    ru: "Сегодняшнее обучение ещё не началось. Пройдите мини-игру с Ботой, чтобы увидеть прогресс здесь.",
+    kz: "Бүгінгі оқу әлі басталған жоқ. Прогресті көру үшін Ботамен шағын ойынды аяқтаңыз.",
+  },
+  activities_today: { en: "Educational activities today", ru: "Учебные активности сегодня", kz: "Бүгінгі оқу әрекеттері" },
+  coins_today: { en: "Bota Coins earned today", ru: "Монеты Бота за сегодня", kz: "Бүгін жиналған Бота тиындары" },
+  stickers_today: { en: "New stickers today", ru: "Новые стикеры сегодня", kz: "Бүгінгі жаңа стикерлер" },
+  skills_today: { en: "Skills trained today", ru: "Навыки сегодня", kz: "Бүгінгі дағдылар" },
+  screen_time: { en: "Screen time", ru: "Экранное время", kz: "Экран уақыты" },
+  screen_time_detail: {
+    en: "Guided limit in this demo: 30 minutes per day. Learning stays short and focused.",
+    ru: "Ориентир в демо: 30 минут в день. Обучение остаётся коротким и сфокусированным.",
+    kz: "Демодағы бағыт: күніне 30 минут. Оқу қысқа әрі жинақы болады.",
+  },
+  open_garden: { en: "Open Skill Garden", ru: "Открыть сад навыков", kz: "Дағды бағын ашу" },
+  open_album: { en: "Open Sticker Album", ru: "Открыть альбом стикеров", kz: "Стикер альбомын ашу" },
+  dashboard_eyebrow: { en: "Parent dashboard", ru: "Панель родителя", kz: "Ата-ана панелі" },
+  dashboard_title: { en: "{name}'s Progress", ru: "Прогресс: {name}", kz: "{name} прогресі" },
+  dashboard_lead: {
+    en: "A clear summary of what your child practiced today and how the comfort profile is adapting the experience.",
+    ru: "Понятная сводка того, что ребёнок практиковал сегодня, и как профиль комфорта адаптирует приложение.",
+    kz: "Балаңыз бүгін не жаттықтырғанын және ыңғайлылық профилі тәжірибені қалай бейімдейтінін көрсететін қысқаша шолу.",
+  },
+  language_title: { en: "Dashboard language", ru: "Язык панели", kz: "Панель тілі" },
+  language_lead: { en: "Choose the language parents see in this dashboard.", ru: "Выберите язык панели для родителей.", kz: "Ата-ана панелінің тілін таңдаңыз." },
+  age: { en: "Age", ru: "Возраст", kz: "Жасы" },
+  language: { en: "Language", ru: "Язык", kz: "Тіл" },
+  coins: { en: "Coins", ru: "Монеты", kz: "Тиындар" },
+  screen_time_short: { en: "30 min/day", ru: "30 мин/день", kz: "күніне 30 мин" },
+  completed_games: { en: "Completed games", ru: "Пройденные игры", kz: "Аяқталған ойындар" },
+  no_games: { en: "No games yet", ru: "Игр пока нет", kz: "Әзірге ойын жоқ" },
+  skills_trained: { en: "Skills trained", ru: "Тренированные навыки", kz: "Жаттыққан дағдылар" },
+  start_quest: { en: "Start a quest to train skills", ru: "Начните квест, чтобы тренировать навыки", kz: "Дағдыларды жаттықтыру үшін квест бастаңыз" },
+  badges: { en: "Badges", ru: "Значки", kz: "Белгілер" },
+  no_badges: { en: "No badges yet", ru: "Значков пока нет", kz: "Әзірге белгі жоқ" },
+  skill_garden_growth: { en: "Skill garden (estimated growth)", ru: "Сад навыков (примерный рост)", kz: "Дағды бағы (шамамен өсу)" },
+  memory: { en: "Memory", ru: "Память", kz: "Жад" },
+  math: { en: "Math", ru: "Математика", kz: "Математика" },
+  kazakh_words: { en: "Kazakh words", ru: "Казахские слова", kz: "Қазақ сөздері" },
+  culture: { en: "Culture", ru: "Культура", kz: "Мәдениет" },
+  sticker_album: { en: "Sticker album", ru: "Альбом стикеров", kz: "Стикер альбомы" },
+  stickers_collected: { en: "{count}/{total} stickers collected", ru: "Собрано стикеров: {count}/{total}", kz: "{count}/{total} стикер жиналды" },
+  adaptive_profile: { en: "Adaptive Profile", ru: "Адаптивный профиль", kz: "Бейімделген профиль" },
+  comfort_profile: { en: "Comfort profile", ru: "Профиль комфорта", kz: "Ыңғайлылық профилі" },
+  active: { en: "Active", ru: "Активен", kz: "Белсенді" },
+  off: { en: "Off", ru: "Выключен", kz: "Өшірулі" },
+  source: { en: "Source", ru: "Источник", kz: "Дереккөз" },
+  support_needs: { en: "Selected support needs", ru: "Выбранные потребности поддержки", kz: "Таңдалған қолдау қажеттіліктері" },
+  standard_mode: { en: "Standard mode", ru: "Стандартный режим", kz: "Стандартты режим" },
+  enabled: { en: "Enabled", ru: "Включено", kz: "Қосулы" },
+  recommendation_summary: { en: "Recommendation summary", ru: "Сводка рекомендаций", kz: "Ұсынымдар қорытындысы" },
+  rec_visibility_combo: {
+    en: "Large text and high contrast enabled for better visibility.",
+    ru: "Крупный текст и высокий контраст включены для лучшей видимости.",
+    kz: "Жақсырақ көріну үшін үлкен мәтін және жоғары контраст қосылды.",
+  },
+  rec_large_text: { en: "Large text enabled to make reading easier.", ru: "Крупный текст включён, чтобы читать было проще.", kz: "Оқуды жеңілдету үшін үлкен мәтін қосылды." },
+  rec_high_contrast: { en: "High contrast enabled to improve readability.", ru: "Высокий контраст включён для лучшей читаемости.", kz: "Оқылуын жақсарту үшін жоғары контраст қосылды." },
+  rec_voice: {
+    en: "Voice instructions and Bota Voice Guide enabled (audio is optional).",
+    ru: "Голосовые инструкции и помощник Бота включены (аудио необязательно).",
+    kz: "Дауыстық нұсқаулар және Бота көмекшісі қосылды (аудио міндетті емес).",
+  },
+  rec_voice_nav: { en: "Voice navigation enabled for simple spoken commands.", ru: "Голосовая навигация включена для простых команд.", kz: "Қарапайым ауызша командалар үшін дауыстық навигация қосылды." },
+  rec_subtitles: {
+    en: "Subtitles and text hints enabled so learning never depends only on sound.",
+    ru: "Субтитры и текстовые подсказки включены, чтобы обучение не зависело только от звука.",
+    kz: "Оқу тек дыбысқа тәуелді болмауы үшін субтитрлер мен мәтіндік кеңестер қосылды.",
+  },
+  rec_no_timer: { en: "Timers removed to reduce pressure.", ru: "Таймеры убраны, чтобы снизить давление.", kz: "Қысымды азайту үшін таймерлер алынды." },
+  rec_buttons: { en: "Buttons enlarged for easier interaction.", ru: "Кнопки увеличены для более удобного взаимодействия.", kz: "Ыңғайлы әрекет үшін батырмалар үлкейтілді." },
+  rec_reduced_motion: { en: "Reduced animations enabled for a calmer experience.", ru: "Анимации уменьшены для более спокойного опыта.", kz: "Тынышырақ тәжірибе үшін анимациялар азайтылды." },
+  rec_simplified: {
+    en: "Instructions simplified and tasks made less overwhelming.",
+    ru: "Инструкции упрощены, а задания стали менее перегруженными.",
+    kz: "Нұсқаулар жеңілдетілді және тапсырмалар аз жүктемелі болды.",
+  },
+  rec_gesture: {
+    en: "Gesture Answer Mode available as a non-precise touch fallback.",
+    ru: "Режим ответа жестом доступен как вариант без точного касания.",
+    kz: "Дәл басуды қажет етпейтін қосымша әдіс ретінде қимылмен жауап беру режимі қолжетімді.",
+  },
+  quick_toggles: { en: "Quick toggles", ru: "Быстрые переключатели", kz: "Жылдам қосқыштар" },
+  edit_settings: { en: "Edit settings", ru: "Изменить настройки", kz: "Баптауларды өзгерту" },
+  reset_standard: { en: "Reset to Standard", ru: "Вернуть стандарт", kz: "Стандартқа қайтару" },
+  comfort_profile_cta: { en: "Learning Comfort Profile", ru: "Профиль комфорта обучения", kz: "Оқу ыңғайлылығы профилі" },
+  accessibility_eyebrow: { en: "Qolaily Mode", ru: "Qolaily Mode", kz: "Qolaily Mode" },
+  accessibility_lead: {
+    en: "Make the app comfortable for your child. You can change these anytime in Parent Mode.",
+    ru: "Настройте приложение под комфорт ребёнка. Эти параметры можно менять в режиме родителя.",
+    kz: "Қолданбаны балаңызға ыңғайлы етіңіз. Бұл баптауларды ата-ана режимінде кез келген уақытта өзгертуге болады.",
+  },
+  back_to_parent: { en: "Back to Parent Mode", ru: "Назад в режим родителя", kz: "Ата-ана режиміне оралу" },
+  qr_unlock: { en: "QR Unlock", ru: "QR разблокировка", kz: "QR арқылы ашу" },
+  reset_demo_progress: { en: "Reset demo progress", ru: "Сбросить демо-прогресс", kz: "Демо прогресті қалпына келтіру" },
+  reset_demo_detail: {
+    en: "Clears local coins, badges, completed games, QR unlock, and profile data on this device.",
+    ru: "Удаляет локальные монеты, значки, пройденные игры, QR-разблокировки и данные профиля на этом устройстве.",
+    kz: "Осы құрылғыдағы тиындарды, белгілерді, аяқталған ойындарды, QR ашуларын және профиль деректерін өшіреді.",
+  },
+  confirm_reset: { en: "Confirm Reset", ru: "Подтвердить сброс", kz: "Қалпына келтіруді растау" },
+  cancel: { en: "Cancel", ru: "Отмена", kz: "Бас тарту" },
+  reset_progress: { en: "Reset Progress", ru: "Сбросить прогресс", kz: "Прогресті қалпына келтіру" },
+};
+
+const PARENT_ACTIVITY_LABELS: Record<string, LocalizedText> = {
+  memory: { en: "memory matching", ru: "игру на память", kz: "жад сәйкестендіруін" },
+  math: { en: "counting and math", ru: "счёт и математику", kz: "санау мен математиканы" },
+  words: { en: "Kazakh language practice", ru: "практику казахского языка", kz: "қазақ тілі жаттығуын" },
+  patterns: { en: "patterns and logic", ru: "узоры и логику", kz: "өрнектер мен логиканы" },
+  culture: { en: "Kazakhstan culture", ru: "культуру Казахстана", kz: "Қазақстан мәдениетін" },
+  "daily-chest": { en: "the daily learning chest", ru: "ежедневный учебный сундук", kz: "күнделікті оқу сандығын" },
+};
+
+const PARENT_SKILL_LABELS: Record<LearningSession["skillsTrained"][number], LocalizedText> = {
+  memory: { en: "memory", ru: "память", kz: "жад" },
+  math: { en: "math", ru: "математику", kz: "математика" },
+  language: { en: "Kazakh language", ru: "казахский язык", kz: "қазақ тілі" },
+  culture: { en: "culture and facts", ru: "культуру и факты", kz: "мәдениет пен деректер" },
+};
+
+const PARENT_SUPPORT_NEED_LABELS: Record<SupportNeed, LocalizedText> = {
+  vision: { en: "Better visibility", ru: "Лучшая видимость", kz: "Жақсырақ көріну" },
+  hearing: { en: "Text instead of sound", ru: "Текст вместо звука", kz: "Дыбыс орнына мәтін" },
+  motor: { en: "Easier touch controls", ru: "Более удобное касание", kz: "Ыңғайлырақ басқару" },
+  focus: { en: "Calm focus mode", ru: "Спокойный режим фокуса", kz: "Тыныш фокус режимі" },
+  standard: { en: "Standard mode", ru: "Стандартный режим", kz: "Стандартты режим" },
+};
+
+const PARENT_SETUP_SOURCE_LABELS: Record<UserProfile["adaptiveProfile"]["setupSource"], LocalizedText> = {
+  manual: { en: "Manual setup", ru: "Ручная настройка", kz: "Қолмен баптау" },
+  default: { en: "Skipped / standard", ru: "Пропущено / стандарт", kz: "Өткізілді / стандарт" },
+  mock_document: { en: "Sample recommendation (demo)", ru: "Пример рекомендации (демо)", kz: "Ұсыным үлгісі (демо)" },
+};
+
+const PARENT_ACCESSIBILITY_LABELS: Partial<Record<keyof AccessibilitySettings, LocalizedText>> = {
+  largeText: { en: "Large text", ru: "Крупный текст", kz: "Үлкен мәтін" },
+  largeButtons: { en: "Large buttons", ru: "Крупные кнопки", kz: "Үлкен батырмалар" },
+  highContrast: { en: "High contrast", ru: "Высокий контраст", kz: "Жоғары контраст" },
+  voiceInstructions: { en: "Voice instructions", ru: "Голосовые инструкции", kz: "Дауыстық нұсқаулар" },
+  voiceNavigation: { en: "Voice navigation", ru: "Голосовая навигация", kz: "Дауыстық навигация" },
+  botaVoiceGuide: { en: "Bota Voice Guide", ru: "Голосовой помощник Бота", kz: "Бота дауыстық көмекшісі" },
+  textHints: { en: "Text hints", ru: "Текстовые подсказки", kz: "Мәтіндік кеңестер" },
+  noTimer: { en: "No timer", ru: "Без таймера", kz: "Таймер жоқ" },
+  reducedAnimations: { en: "Reduced animations", ru: "Меньше анимации", kz: "Азайтылған анимация" },
+  simplifiedInstructions: { en: "Simpler instructions", ru: "Более простые инструкции", kz: "Оңайырақ нұсқаулар" },
+  gestureAnswerMode: { en: "Gesture Answer Mode", ru: "Режим ответа жестом", kz: "Қимылмен жауап беру режимі" },
+};
+
+function parentStr(key: string, language: Language): string {
+  return pickText(PARENT_TEXT[key] ?? { en: key, ru: key, kz: key }, language);
+}
+
+function formatParentText(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
+}
+
+function localizedList(items: string[], language: Language): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0]!;
+  const last = items[items.length - 1]!;
+  return `${items.slice(0, -1).join(", ")} ${parentStr("list_and", language)} ${last}`;
+}
+
+function parentActivityLabel(id: string, language: Language): string {
+  return PARENT_ACTIVITY_LABELS[id] ? pickText(PARENT_ACTIVITY_LABELS[id]!, language) : id.replace(/-/g, " ");
+}
+
+function parentSkillLabel(skill: LearningSession["skillsTrained"][number], language: Language): string {
+  return pickText(PARENT_SKILL_LABELS[skill], language);
+}
+
+function parentAccessibilityLabel(key: keyof AccessibilitySettings, language: Language): string {
+  return PARENT_ACCESSIBILITY_LABELS[key] ? pickText(PARENT_ACCESSIBILITY_LABELS[key]!, language) : key;
+}
+
+function buildParentRecommendationSummary(settings: AccessibilitySettings, language: Language): string[] {
+  if (!settings.enabled) return [];
+  const lines: string[] = [];
+  if (settings.largeText && settings.highContrast) lines.push(parentStr("rec_visibility_combo", language));
+  else if (settings.largeText) lines.push(parentStr("rec_large_text", language));
+  else if (settings.highContrast) lines.push(parentStr("rec_high_contrast", language));
+  if (settings.voiceInstructions || settings.botaVoiceGuide) lines.push(parentStr("rec_voice", language));
+  if (settings.voiceNavigation) lines.push(parentStr("rec_voice_nav", language));
+  if (settings.subtitles) lines.push(parentStr("rec_subtitles", language));
+  if (settings.noTimer) lines.push(parentStr("rec_no_timer", language));
+  if (settings.largeButtons || settings.extraLargeTouchTargets) lines.push(parentStr("rec_buttons", language));
+  if (settings.reducedAnimations) lines.push(parentStr("rec_reduced_motion", language));
+  if (settings.simplifiedInstructions || settings.oneTaskAtATime || settings.fewerAnswerOptions) lines.push(parentStr("rec_simplified", language));
+  if (settings.gestureAnswerMode) lines.push(parentStr("rec_gesture", language));
+  return lines;
+}
+
 function ParentPin({
   accessibility,
+  language,
   onSpeak,
   onSuccess,
 }: {
   accessibility: AccessibilitySettings;
+  language: Language;
   onSpeak: (text: string) => void;
   onSuccess: () => void;
 }) {
@@ -2647,57 +2877,60 @@ function ParentPin({
   const [error, setError] = useState("");
   return (
     <section className="screen center">
-      <p className="eyebrow">Parent Mode</p>
-      <h2>Enter PIN</h2>
-      <p className="lead">This area is for grown-ups only.</p>
+      <p className="eyebrow">{uiStr("parent_pin_title", language)}</p>
+      <h2>{uiStr("parent_enter_pin", language)}</h2>
+      <p className="lead">{parentStr("pin_lead", language)}</p>
       <input className="pin" inputMode="numeric" value={pin} onChange={(event) => setPin(event.target.value)} placeholder="1234" />
       {error ? (
         <GentleNotice
           accessibility={accessibility}
           onSpeak={onSpeak}
-          headline="That PIN did not match"
+          headline={parentStr("pin_error_headline", language)}
           detail={error}
         />
       ) : null}
-      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError("Try 1234 for the MVP demo — no penalty, just try again.")}>Unlock</button>
+      <button className="primary" onClick={() => pin === "1234" ? onSuccess() : setError(parentStr("pin_error_detail", language))}>{parentStr("unlock", language)}</button>
     </section>
   );
 }
 
-function joinWithAnd(items: string[]): string {
-  if (items.length === 0) return "";
-  if (items.length === 1) return items[0]!;
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-function buildParentSummaryParagraph(profile: UserProfile, session: LearningSession): string {
+function buildParentSummaryParagraph(profile: UserProfile, session: LearningSession, language: Language): string {
   const name = profile.name;
-  const gameLabels = session.gamesCompleted.map((g) => SESSION_ACTIVITY_LABELS[g] ?? g.replace(/-/g, " "));
+  const gameLabels = session.gamesCompleted.map((g) => parentActivityLabel(g, language));
   const qrBits = session.qrItemsScanned.map((id) => {
-    if (id === "package-qr") return "a Bota package unlock (demo)";
+    if (id === "package-qr") return parentStr("package_unlock", language);
     const item = QR_ITEMS.find((q) => q.id === id);
-    return item ? `scanning ${item.productName}` : "a package activity";
+    return item
+      ? formatParentText(parentStr("scanning_product", language), { product: item.productName })
+      : parentStr("package_activity", language);
   });
   const activities = [...gameLabels, ...qrBits];
   const n = activities.length;
   const activityText =
     n === 0
-      ? "used the app for learning"
-      : `completed ${n} educational activit${n === 1 ? "y" : "ies"}: ${joinWithAnd(activities)}`;
+      ? parentStr("activity_empty", language)
+      : formatParentText(parentStr("activity_completed", language), { count: n, items: localizedList(activities, language) });
   const stickers = session.stickersEarned
     .map((id) => STICKERS.find((s) => s.id === id)?.title ?? id)
     .filter(Boolean);
   const stickerPhrase =
     stickers.length === 0
-      ? "did not add new album stickers in this summary window"
+      ? parentStr("stickers_none", language)
       : stickers.length === 1
-        ? `collected a new sticker (${stickers[0]})`
-        : `collected ${stickers.length} new stickers (${joinWithAnd(stickers)})`;
-  const skills = session.skillsTrained.map((s) => SESSION_SKILL_LABELS[s]);
+        ? formatParentText(parentStr("stickers_one", language), { stickers: stickers[0]! })
+        : formatParentText(parentStr("stickers_many", language), { count: stickers.length, stickers: localizedList(stickers, language) });
+  const skills = session.skillsTrained.map((s) => parentSkillLabel(s, language));
   const skillPhrase =
-    skills.length === 0 ? "has not logged skill practice yet today" : `trained learning progress in ${joinWithAnd(skills)}`;
-  return `Today, ${name} ${activityText}. ${name} earned ${session.coinsEarned} Bota Coins, ${stickerPhrase}, and ${skillPhrase}.`;
+    skills.length === 0
+      ? parentStr("skills_none", language)
+      : formatParentText(parentStr("skills_some", language), { skills: localizedList(skills, language) });
+  return formatParentText(parentStr("summary_sentence", language), {
+    name,
+    activityText,
+    coins: session.coinsEarned,
+    stickerPhrase,
+    skillPhrase,
+  });
 }
 
 function ParentSummaryCard({
@@ -2711,50 +2944,51 @@ function ParentSummaryCard({
   onGarden: () => void;
   onAlbum: () => void;
 }) {
+  const language = profile.language;
   const session = getSessionForDate(profile, calendarDay);
   const hasData = session && sessionHasLearningActivity(session);
 
   return (
     <div className="parent-summary-card">
-      <p className="eyebrow">Today's learning summary</p>
-      <h3>Learning at a glance</h3>
+      <p className="eyebrow">{parentStr("summary_eyebrow", language)}</p>
+      <h3>{parentStr("summary_title", language)}</h3>
       {hasData && session ? (
         <>
-          <p className="parent-summary-lead">{buildParentSummaryParagraph(profile, session)}</p>
+          <p className="parent-summary-lead">{buildParentSummaryParagraph(profile, session, language)}</p>
           <ul className="parent-summary-meta">
             <li>
-              <strong>Educational activities today</strong>
+              <strong>{parentStr("activities_today", language)}</strong>
               <span>{session.gamesCompleted.length + session.qrItemsScanned.length}</span>
             </li>
             <li>
-              <strong>Bota Coins earned today</strong>
+              <strong>{parentStr("coins_today", language)}</strong>
               <span>{session.coinsEarned}</span>
             </li>
             <li>
-              <strong>New stickers today</strong>
+              <strong>{parentStr("stickers_today", language)}</strong>
               <span>{session.stickersEarned.length}</span>
             </li>
             <li>
-              <strong>Skills trained today</strong>
-              <span>{session.skillsTrained.length ? session.skillsTrained.map((s) => SESSION_SKILL_LABELS[s]).join(" · ") : "—"}</span>
+              <strong>{parentStr("skills_today", language)}</strong>
+              <span>{session.skillsTrained.length ? session.skillsTrained.map((s) => parentSkillLabel(s, language)).join(" · ") : "—"}</span>
             </li>
             <li>
-              <strong>Screen time</strong>
-              <span>Guided limit in this demo: 30 minutes per day. Learning stays short and focused.</span>
+              <strong>{parentStr("screen_time", language)}</strong>
+              <span>{parentStr("screen_time_detail", language)}</span>
             </li>
           </ul>
         </>
       ) : (
         <p className="parent-summary-empty">
-          Today's learning journey has not started yet. Complete a mini-game with Bota to see progress here.
+          {parentStr("summary_empty", language)}
         </p>
       )}
       <div className="parent-summary-cta">
         <button className="primary" type="button" onClick={onGarden}>
-          Open Skill Garden 🌱
+          {parentStr("open_garden", language)} 🌱
         </button>
         <button type="button" onClick={onAlbum}>
-          Open Sticker Album 📔
+          {parentStr("open_album", language)} 📔
         </button>
       </div>
     </div>
@@ -2778,44 +3012,31 @@ function ParentDashboard({
   onQr: () => void;
   onReset: () => void;
 }) {
-  const skills = profile.completedGames.map((game) => ({ memory: "Memory", words: "Kazakh language", math: "Math", patterns: "Logic", culture: "Culture" })[game] ?? game);
+  const language = profile.language;
+  const skills = profile.completedGames.map((game) => parentActivityLabel(game, language));
   const [confirmReset, setConfirmReset] = useState(false);
   const sp = profile.skillProgress;
 
   const needs = profile.adaptiveProfile.supportNeeds;
   const settings = profile.adaptiveProfile.settings;
-  const summary = profile.adaptiveProfile.recommendationSummary;
-
-  const needLabels: Record<SupportNeed, string> = {
-    vision: "Better visibility",
-    hearing: "Text instead of sound",
-    motor: "Easier touch controls",
-    focus: "Calm focus mode",
-    standard: "Standard mode",
-  };
-
-  const setupSourceLabel: Record<UserProfile["adaptiveProfile"]["setupSource"], string> = {
-    manual: "Manual setup",
-    default: "Skipped / standard",
-    mock_document: "Sample recommendation (demo)",
-  };
+  const summary = buildParentRecommendationSummary(settings, language);
 
   const adaptiveActive = useMemo(() => {
     const labels = [
-      settings.largeText ? "Large text" : null,
-      settings.largeButtons ? "Large buttons" : null,
-      settings.highContrast ? "High contrast" : null,
-      settings.voiceInstructions ? "Voice instructions" : null,
-      settings.voiceNavigation ? "Voice navigation" : null,
-      settings.textHints ? "Text hints" : null,
-      settings.noTimer ? "No timer" : null,
-      settings.reducedAnimations ? "Reduced animations" : null,
-      settings.simplifiedInstructions ? "Simpler instructions" : null,
-      settings.gestureAnswerMode ? "Gesture Answer Mode (mock)" : null,
+      settings.largeText ? parentAccessibilityLabel("largeText", language) : null,
+      settings.largeButtons ? parentAccessibilityLabel("largeButtons", language) : null,
+      settings.highContrast ? parentAccessibilityLabel("highContrast", language) : null,
+      settings.voiceInstructions ? parentAccessibilityLabel("voiceInstructions", language) : null,
+      settings.voiceNavigation ? parentAccessibilityLabel("voiceNavigation", language) : null,
+      settings.textHints ? parentAccessibilityLabel("textHints", language) : null,
+      settings.noTimer ? parentAccessibilityLabel("noTimer", language) : null,
+      settings.reducedAnimations ? parentAccessibilityLabel("reducedAnimations", language) : null,
+      settings.simplifiedInstructions ? parentAccessibilityLabel("simplifiedInstructions", language) : null,
+      settings.gestureAnswerMode ? `${parentAccessibilityLabel("gestureAnswerMode", language)} (${language === "en" ? "mock" : language === "ru" ? "демо" : "демо"})` : null,
     ].filter((x): x is string => Boolean(x));
     const active = labels.length > 0;
     return { active, labels };
-  }, [settings]);
+  }, [settings, language]);
 
   const toggleSetting = (key: keyof AccessibilitySettings) => {
     const nextSettings = { ...settings, [key]: !settings[key] };
@@ -2846,51 +3067,67 @@ function ParentDashboard({
   return (
     <section className="screen">
       <PageHeader
-        eyebrow="Parent dashboard"
-        title={`${profile.name}'s Progress`}
-        lead="A clear summary of what your child practiced today and how the comfort profile is adapting the experience."
+        eyebrow={parentStr("dashboard_eyebrow", language)}
+        title={formatParentText(parentStr("dashboard_title", language), { name: profile.name })}
+        lead={parentStr("dashboard_lead", language)}
       />
       <ParentSummaryCard profile={profile} calendarDay={getToday()} onGarden={onGarden} onAlbum={onAlbum} />
+      <div className="panel">
+        <strong>{parentStr("language_title", language)}</strong>
+        <p className="lead">{parentStr("language_lead", language)}</p>
+        <div className="lang-switch">
+          {LANGUAGE_OPTIONS.map((option) => (
+            <button
+              key={option.code}
+              type="button"
+              className={`lang-btn ${language === option.code ? "lang-btn--active" : ""}`}
+              onClick={() => onChange({ ...profile, language: option.code })}
+            >
+              {option.flag} {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="stats">
-        <span>Age <b>{profile.age}</b></span>
-        <span>Language <b>{profile.language.toUpperCase()}</b></span>
-        <span>Coins <b>{profile.coins}</b></span>
-        <span>Screen time <b>30 min/day</b></span>
+        <span>{parentStr("age", language)} <b>{profile.age}</b></span>
+        <span>{parentStr("language", language)} <b>{profile.language.toUpperCase()}</b></span>
+        <span>{parentStr("coins", language)} <b>{profile.coins}</b></span>
+        <span>{parentStr("screen_time", language)} <b>{parentStr("screen_time_short", language)}</b></span>
       </div>
       <div className="panel">
-        <strong>Completed games</strong>
-        <p>{profile.completedGames.length ? profile.completedGames.join(", ") : "No games yet"}</p>
-        <strong>Skills trained</strong>
-        <p>{skills.length ? Array.from(new Set(skills)).join(", ") : "Start a quest to train skills"}</p>
-        <strong>Badges</strong>
-        <p>{profile.badges.length ? profile.badges.join(", ") : "No badges yet"}</p>
-        <strong>Skill garden (estimated growth)</strong>
+        <strong>{parentStr("completed_games", language)}</strong>
+        <p>{profile.completedGames.length ? profile.completedGames.map((game) => parentActivityLabel(game, language)).join(", ") : parentStr("no_games", language)}</p>
+        <strong>{parentStr("skills_trained", language)}</strong>
+        <p>{skills.length ? Array.from(new Set(skills)).join(", ") : parentStr("start_quest", language)}</p>
+        <strong>{parentStr("badges", language)}</strong>
+        <p>{profile.badges.length ? profile.badges.join(", ") : parentStr("no_badges", language)}</p>
+        <strong>{parentStr("skill_garden_growth", language)}</strong>
         <p>
-          Memory: {sp.memory}% · Math: {sp.math}% · Kazakh words: {sp.language}% · Culture: {sp.culture}%
+          {parentStr("memory", language)}: {sp.memory}% · {parentStr("math", language)}: {sp.math}% · {parentStr("kazakh_words", language)}: {sp.language}% · {parentStr("culture", language)}: {sp.culture}%
         </p>
-        <button onClick={onGarden}>Open Skill Garden</button>
-        <strong>Sticker album</strong>
-        <p>{profile.unlockedStickers.length}/{STICKERS.length} stickers collected</p>
-        <button onClick={onAlbum}>Open Sticker Album</button>
+        <button onClick={onGarden}>{parentStr("open_garden", language)}</button>
+        <strong>{parentStr("sticker_album", language)}</strong>
+        <p>{formatParentText(parentStr("stickers_collected", language), { count: profile.unlockedStickers.length, total: STICKERS.length })}</p>
+        <button onClick={onAlbum}>{parentStr("open_album", language)}</button>
       </div>
       <div className="panel">
-        <strong>Adaptive Profile</strong>
+        <strong>{parentStr("adaptive_profile", language)}</strong>
         <p className="lead">
-          Comfort profile: <b>{adaptiveActive.active ? "Active" : "Off"}</b> · Source: <b>{setupSourceLabel[profile.adaptiveProfile.setupSource]}</b>
+          {parentStr("comfort_profile", language)}: <b>{adaptiveActive.active ? parentStr("active", language) : parentStr("off", language)}</b> · {parentStr("source", language)}: <b>{pickText(PARENT_SETUP_SOURCE_LABELS[profile.adaptiveProfile.setupSource], language)}</b>
         </p>
-        <strong>Selected support needs</strong>
-        <p>{needs.length ? needs.map((n) => needLabels[n] ?? n).join(" · ") : "Standard mode"}</p>
+        <strong>{parentStr("support_needs", language)}</strong>
+        <p>{needs.length ? needs.map((n) => pickText(PARENT_SUPPORT_NEED_LABELS[n], language)).join(" · ") : parentStr("standard_mode", language)}</p>
 
         {adaptiveActive.labels.length > 0 && (
           <>
-            <strong>Enabled</strong>
+            <strong>{parentStr("enabled", language)}</strong>
             <p>{adaptiveActive.labels.join(" · ")}</p>
           </>
         )}
 
         {summary.length > 0 && (
           <>
-            <strong>Recommendation summary</strong>
+            <strong>{parentStr("recommendation_summary", language)}</strong>
             <ul className="recommendation-list">
               {summary.map((line) => (
                 <li key={line}>{line}</li>
@@ -2899,49 +3136,49 @@ function ParentDashboard({
           </>
         )}
 
-        <strong>Quick toggles</strong>
+        <strong>{parentStr("quick_toggles", language)}</strong>
         <div className="toggle-list">
           {(
             [
-              ["largeText", "Large Text"],
-              ["largeButtons", "Large Buttons"],
-              ["highContrast", "High Contrast"],
-              ["voiceInstructions", "Voice Instructions"],
-              ["voiceNavigation", "Voice Navigation"],
-              ["textHints", "Text Hints"],
-              ["noTimer", "No Timer"],
-              ["reducedAnimations", "Reduced Animations"],
-              ["simplifiedInstructions", "Simpler instructions"],
-              ["gestureAnswerMode", "Gesture Answer Mode"],
+              "largeText",
+              "largeButtons",
+              "highContrast",
+              "voiceInstructions",
+              "voiceNavigation",
+              "textHints",
+              "noTimer",
+              "reducedAnimations",
+              "simplifiedInstructions",
+              "gestureAnswerMode",
             ] as const
-          ).map(([key, label]) => (
+          ).map((key) => (
             <label className="toggle" key={key}>
-              <span>{label}</span>
+              <span>{parentAccessibilityLabel(key, language)}</span>
               <input type="checkbox" checked={Boolean(settings[key])} onChange={() => toggleSetting(key)} />
             </label>
           ))}
         </div>
         <div className="cta-row">
-          <button className="primary" type="button" onClick={onSettings}>Edit settings</button>
-          <button type="button" onClick={resetToStandard}>Reset to Standard</button>
+          <button className="primary" type="button" onClick={onSettings}>{parentStr("edit_settings", language)}</button>
+          <button type="button" onClick={resetToStandard}>{parentStr("reset_standard", language)}</button>
         </div>
       </div>
       <div className="cta-row">
-        <button className="primary" onClick={onSettings}>Learning Comfort Profile</button>
-        <button onClick={onQr}>QR Unlock</button>
+        <button className="primary" onClick={onSettings}>{parentStr("comfort_profile_cta", language)}</button>
+        <button onClick={onQr}>{parentStr("qr_unlock", language)}</button>
       </div>
       <div className="danger-zone">
         <div>
-          <strong>Reset demo progress</strong>
-          <p>Clears local coins, badges, completed games, QR unlock, and profile data on this device.</p>
+          <strong>{parentStr("reset_demo_progress", language)}</strong>
+          <p>{parentStr("reset_demo_detail", language)}</p>
         </div>
         {confirmReset ? (
           <div className="reset-actions">
-            <button className="danger" onClick={onReset}>Confirm Reset</button>
-            <button onClick={() => setConfirmReset(false)}>Cancel</button>
+            <button className="danger" onClick={onReset}>{parentStr("confirm_reset", language)}</button>
+            <button onClick={() => setConfirmReset(false)}>{parentStr("cancel", language)}</button>
           </div>
         ) : (
-          <button className="secondary-danger" onClick={() => setConfirmReset(true)}>Reset Progress</button>
+          <button className="secondary-danger" onClick={() => setConfirmReset(true)}>{parentStr("reset_progress", language)}</button>
         )}
       </div>
     </section>
@@ -2949,6 +3186,7 @@ function ParentDashboard({
 }
 
 function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfile; onChange: (profile: UserProfile) => void; onBack: () => void }) {
+  const language = profile.language;
   const set = (key: keyof AccessibilitySettings) => {
     const nextSettings = { ...profile.adaptiveProfile.settings, [key]: !profile.adaptiveProfile.settings[key] };
     onChange({
@@ -2976,12 +3214,12 @@ function AccessibilityPanel({ profile, onChange, onBack }: { profile: UserProfil
   return (
     <section className="screen accessibility-screen">
       <PageHeader
-        eyebrow="Qolaily Mode"
-        title="Learning Comfort Profile"
-        lead="Make the app comfortable for your child. You can change these anytime in Parent Mode."
+        eyebrow={parentStr("accessibility_eyebrow", language)}
+        title={parentStr("comfort_profile_cta", language)}
+        lead={parentStr("accessibility_lead", language)}
       />
-      <div className="toggle-list">{items.map(([key, label]) => <label className="toggle" key={key}><span>{label}</span><input type="checkbox" checked={profile.adaptiveProfile.settings[key]} onChange={() => set(key)} /></label>)}</div>
-      <button className="primary" onClick={onBack}>Back to Parent Mode</button>
+      <div className="toggle-list">{items.map(([key]) => <label className="toggle" key={key}><span>{parentAccessibilityLabel(key, language)}</span><input type="checkbox" checked={profile.adaptiveProfile.settings[key]} onChange={() => set(key)} /></label>)}</div>
+      <button className="primary" onClick={onBack}>{parentStr("back_to_parent", language)}</button>
     </section>
   );
 }
