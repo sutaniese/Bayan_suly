@@ -35,7 +35,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
-export async function transcribeAudio(blob: Blob, language: Language): Promise<{ transcript: string; language: string | null }> {
+export async function transcribeAudio(blob: Blob, _language: Language): Promise<{ transcript: string; language: string | null }> {
   const audioBase64 = await blobToBase64(blob);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
@@ -47,7 +47,6 @@ export async function transcribeAudio(blob: Blob, language: Language): Promise<{
       body: JSON.stringify({
         audioBase64,
         mimeType: blob.type || "audio/webm",
-        language: language === "kz" ? "kk" : "ru",
       }),
       signal: controller.signal,
     });
@@ -70,6 +69,11 @@ export async function resolveVoiceCommand(
   transcript: string,
   context: VoiceAgentContext,
 ): Promise<VoiceCommandResolution> {
+  const directMatch = matchVoiceCommand(transcript);
+  if (directMatch && context.allowedCommands.includes(directMatch)) {
+    return { action: directMatch, replyText: "Okay.", transcript, source: "fallback" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   let response: Response;
@@ -91,7 +95,11 @@ export async function resolveVoiceCommand(
   const data = await readJsonIfPossible<Partial<VoiceCommandResolution> & { error?: string }>(response);
   const fallback = matchVoiceCommand(transcript);
   const action =
-    typeof data?.action === "string" ? data.action : fallback && context.allowedCommands.includes(fallback) ? fallback : null;
+    typeof data?.action === "string" && context.allowedCommands.includes(data.action)
+      ? data.action
+      : fallback && context.allowedCommands.includes(fallback)
+        ? fallback
+        : null;
 
   return {
     action,

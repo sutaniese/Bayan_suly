@@ -210,6 +210,11 @@ function getLocationPositionPct(location: Location): { left: string; top: string
 
 const GLOBAL_VOICE_COMMANDS: VoiceCommand[] = [
   "open_map",
+  "open_memory_game",
+  "open_words_game",
+  "open_math_game",
+  "open_patterns_game",
+  "open_culture_game",
   "open_rewards",
   "open_album",
   "open_garden",
@@ -225,17 +230,7 @@ const GLOBAL_VOICE_COMMANDS: VoiceCommand[] = [
   "enable_large_text",
 ];
 
-function getAllowedVoiceCommands(view: View): VoiceCommand[] {
-  if (view === "map") {
-    return [
-      ...GLOBAL_VOICE_COMMANDS,
-      "open_memory_game",
-      "open_words_game",
-      "open_math_game",
-      "open_patterns_game",
-      "open_culture_game",
-    ];
-  }
+function getAllowedVoiceCommands(_view: View): VoiceCommand[] {
   return GLOBAL_VOICE_COMMANDS;
 }
 
@@ -1120,6 +1115,12 @@ function BotaVoiceGuide({
     { cmd: "open_parent_mode", label: "Call parent" },
     { cmd: "enable_large_text", label: "Turn on large text" },
   ];
+  const voiceExample =
+    profile.language === "kz"
+      ? 'Айтып көріңіз: "картаны аш", "сыйлықтар", "тиындар"'
+      : profile.language === "ru"
+        ? 'Попробуй: "открой карту", "награды", "сколько монет"'
+        : 'Try: "open map", "open rewards", "show coins"';
 
   return (
     <div className={`voice-guide-root ${showChildHub ? "voice-guide-root--hub" : ""}`}>
@@ -1142,7 +1143,7 @@ function BotaVoiceGuide({
               >
                 {isListening ? "Stop listening" : "Start listening"}
               </button>
-              <small>Try: "open map", "open rewards", "show coins"</small>
+              <small>{voiceExample}</small>
             </div>
           )}
           <div className="voice-guide-chips">
